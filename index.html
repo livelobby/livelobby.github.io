@@ -6,6 +6,13 @@
 <title>Live Lobby</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-TN9C354C');</script>
+<!-- End Google Tag Manager -->
 <style>
 :root { --sbw: 210px; }
 
@@ -487,7 +494,10 @@ canvas.spr {
 </style>
 </head>
 <body>
-
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TN9C354C"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 <!-- SIDEBAR -->
 <div id="sidebar">
   <div id="sb-title">&#9733; LIVE<br>LOBBY &#9733;</div>
@@ -1039,6 +1049,20 @@ $('btn-clear').addEventListener('click', () => {
 // ── Boot ───────────────────────────────────────────────────
 setTheme(cfg.dark !== false);
 syncEmptyState();
+
+// Title from URL hash: livelobby.github.io/#MyTitle → "MyTitle LOBBY"
+(function applyHashTitle() {
+  const hash = decodeURIComponent(window.location.hash.slice(1)).trim();
+  if (!hash) return;
+
+  // Sidebar title: safely inject hash as text
+  const titleEl = $('sb-title');
+  titleEl.textContent = '';
+  titleEl.append('★ ', hash, document.createElement('br'));
+  titleEl.append('LOBBY ★');
+
+  document.title = `${hash} Lobby`;
+})();
 
 // Auto-open settings if not yet configured
 if (!cfg.usersUrl) setTimeout(openModal, 500);
