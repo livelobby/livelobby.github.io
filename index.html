@@ -184,6 +184,9 @@ body {
 .char.visible { opacity: 1; }
 .char.fade    { opacity: 0; }
 
+/* Enable pointer events only on the nameplate area */
+.char.visible .nameplate { pointer-events: auto; cursor: default; }
+
 .nameplate {
   display: flex;
   flex-direction: column;
@@ -196,7 +199,11 @@ body {
   margin-bottom: 4px;
   white-space: nowrap;
   backdrop-filter: blur(4px);
+  opacity: 0.4;
+  transition: opacity 0.25s ease;
 }
+.nameplate:hover,
+.nameplate:active { opacity: 1; }
 
 .np-email {
   font-size: 10px;
@@ -251,8 +258,70 @@ canvas.spr {
 }
 #gear:hover { transform: rotate(60deg); background: var(--btn-hov); }
 
+#users-btn {
+  position: fixed;
+  right: 18px; bottom: 72px;
+  width: 44px; height: 44px;
+  background: var(--sb-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+#users-btn:hover { background: var(--btn-hov); transform: scale(1.08); }
+
+/* Users list modal */
+#users-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 400px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#users-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#users-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 10px 14px;
+}
+.ul-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--sb-border);
+  font-size: 10px;
+}
+.ul-row:last-child { border-bottom: none; }
+.ul-email { color: var(--text); word-break: break-all; flex: 1; }
+.ul-cd { color: #22c55e; flex-shrink: 0; }
+.ul-cd.warn { color: #eab308; }
+.ul-cd.crit { color: #ef4444; }
+.ul-empty { font-size: 7px; color: var(--dim); text-align: center; padding: 20px 0; }
+#users-modal-close {
+  display: block;
+  margin: 10px 14px 14px;
+  flex-shrink: 0;
+}
+
 /* ── OVERLAY / MODAL ─────────────────────────────────────── */
-#overlay {
+#overlay, #users-overlay {
   position: fixed; inset: 0;
   background: var(--overlay);
   z-index: 200;
@@ -261,7 +330,7 @@ canvas.spr {
   justify-content: center;
   backdrop-filter: blur(6px);
 }
-#overlay.open { display: flex; }
+#overlay.open, #users-overlay.open { display: flex; }
 
 #modal {
   background: var(--modal-bg);
@@ -360,6 +429,61 @@ canvas.spr {
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--sb-border); border-radius: 3px; }
+
+/* ── MOBILE: sidebar goes to the top ─────────────────────── */
+@media (max-width: 600px) {
+  :root { --sbw: 0px; }
+
+  #sidebar {
+    left: 0; top: 0; right: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 2px solid var(--sb-border);
+    box-shadow: 0 3px 18px var(--shadow);
+    overflow-x: auto;
+  }
+
+  #sb-title { display: none; }
+
+  .stat {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    flex-shrink: 0;
+  }
+
+  .stat-lbl { display: none; }
+  .stat-val  { font-size: 13px; }
+  .stat-track { display: none; }
+
+  #upd {
+    margin-top: 0;
+    padding-top: 0;
+    flex-shrink: 0;
+    font-size: 5px;
+    white-space: nowrap;
+  }
+
+  #lobby {
+    left: 0;
+    top: 58px;   /* height of the top bar */
+  }
+
+  #gear {
+    right: 10px;
+    bottom: 10px;
+  }
+  #users-btn {
+    right: 10px;
+    bottom: 64px;
+  }
+}
 </style>
 </head>
 <body>
@@ -402,8 +526,20 @@ canvas.spr {
   </div>
 </div>
 
+<!-- USERS LIST BTN -->
+<button id="users-btn" title="Online users">&#128100;</button>
+
 <!-- GEAR -->
 <button id="gear" title="Settings">&#9881;</button>
+
+<!-- USERS LIST MODAL -->
+<div id="users-overlay">
+  <div id="users-modal">
+    <h2>&#128100; Online Users</h2>
+    <div id="users-list"></div>
+    <button class="btn btn-sec" id="users-modal-close">Close</button>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div id="overlay">
@@ -837,6 +973,33 @@ function closeModal() { $('overlay').classList.remove('open'); }
 $('gear').addEventListener('click', openModal);
 $('btn-close').addEventListener('click', closeModal);
 $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
+
+// ── Users list modal ───────────────────────────────────────
+function openUsersList() {
+  const list = $('users-list');
+  const active = [...users.values()].filter(u => !u.fading)
+    .sort((a, b) => a.email.localeCompare(b.email));
+
+  if (active.length === 0) {
+    list.innerHTML = '<div class="ul-empty">No users online</div>';
+  } else {
+    const now = Date.now() / 1000;
+    list.innerHTML = active.map(u => {
+      const r = u.expiry - now;
+      const cls = r < 60 ? 'ul-cd crit' : r < 300 ? 'ul-cd warn' : 'ul-cd';
+      return `<div class="ul-row">
+        <span class="ul-email" title="${u.email}">${u.email}</span>
+        <span class="${cls}">${fmtCD(u.expiry)}</span>
+      </div>`;
+    }).join('');
+  }
+  $('users-overlay').classList.add('open');
+}
+function closeUsersList() { $('users-overlay').classList.remove('open'); }
+
+$('users-btn').addEventListener('click', openUsersList);
+$('users-modal-close').addEventListener('click', closeUsersList);
+$('users-overlay').addEventListener('click', e => { if (e.target === $('users-overlay')) closeUsersList(); });
 
 $('cfg-dark').addEventListener('change', e => setTheme(e.target.checked));
 
