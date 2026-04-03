@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Lobby</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root { --sbw: 210px; }
+
+/* ── THEMES ─────────────────────────────────────────────── */
+html[data-theme="dark"] {
+  --bg:         #0d1117;
+  --floor:      #111827;
+  --grid:       #161d2b;
+  --sb-bg:      #161b27;
+  --sb-border:  #21293d;
+  --card-bg:    #0d1117;
+  --text:       #cdd9f5;
+  --dim:        #4a5878;
+  --accent:     #3b82f6;
+  --shadow:     rgba(0,0,0,0.65);
+  --overlay:    rgba(0,5,20,0.82);
+  --modal-bg:   #161b27;
+  --input-bg:   #0d1117;
+  --input-bd:   #21293d;
+  --btn-bg:     #21293d;
+  --btn-hov:    #2a3550;
+  --np-bg:      rgba(4,8,22,0.84);
+  --np-text:    #e2e8f5;
+  --np-border:  rgba(80,110,200,0.25);
+  --scan:       rgba(0,0,0,0.028);
+}
+
+html[data-theme="light"] {
+  --bg:         #eef0fa;
+  --floor:      #e2e6f5;
+  --grid:       #d5d9ed;
+  --sb-bg:      #f5f7ff;
+  --sb-border:  #c4cadf;
+  --card-bg:    #ffffff;
+  --text:       #1a2040;
+  --dim:        #7880a0;
+  --accent:     #2563eb;
+  --shadow:     rgba(20,30,80,0.14);
+  --overlay:    rgba(190,200,230,0.84);
+  --modal-bg:   #f5f7ff;
+  --input-bg:   #ffffff;
+  --input-bd:   #c4cadf;
+  --btn-bg:     #dde2f2;
+  --btn-hov:    #cdd3e8;
+  --np-bg:      rgba(235,238,255,0.9);
+  --np-text:    #1a2040;
+  --np-border:  rgba(80,100,180,0.2);
+  --scan:       rgba(0,0,0,0.012);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+#sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: var(--sbw);
+  height: 100vh;
+  background: var(--sb-bg);
+  border-right: 2px solid var(--sb-border);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px 12px;
+  gap: 9px;
+  z-index: 50;
+  box-shadow: 3px 0 18px var(--shadow);
+}
+
+#sb-title {
+  font-size: 8px;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 2px;
+  line-height: 1.7;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--sb-border);
+}
+
+.stat {
+  background: var(--card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 4px;
+  padding: 9px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-lbl {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-val { font-size: 18px; line-height: 1.1; }
+
+.stat-track {
+  height: 3px;
+  background: var(--sb-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.7s ease;
+}
+
+.c-users .stat-val  { color: var(--accent); }
+.c-done  .stat-val  { color: #22c55e; }
+.c-done  .stat-fill { background: #22c55e; }
+.c-cncl  .stat-val  { color: #eab308; }
+.c-cncl  .stat-fill { background: #eab308; }
+.c-pend  .stat-val  { color: #ef4444; }
+.c-pend  .stat-fill { background: #ef4444; }
+
+#upd {
+  font-size: 10px;
+  color: var(--dim);
+  text-align: center;
+  margin-top: auto;
+  padding-top: 4px;
+  line-height: 1.8;
+}
+
+/* ── LOBBY ───────────────────────────────────────────────── */
+#lobby {
+  position: fixed;
+  left: var(--sbw); top: 0; right: 0; bottom: 0;
+  background-color: var(--floor);
+  background-image:
+    repeating-linear-gradient(0deg,   transparent, transparent 31px, var(--grid) 31px, var(--grid) 32px),
+    repeating-linear-gradient(90deg,  transparent, transparent 31px, var(--grid) 31px, var(--grid) 32px);
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+/* scanline overlay */
+#lobby::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 3px,
+    var(--scan) 3px, var(--scan) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── CHARACTERS ──────────────────────────────────────────── */
+.char {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* (x,y) = feet center; element bottom aligns to y */
+  transform: translate(-50%, -100%);
+  opacity: 0;
+  transition: opacity 0.85s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.char.visible { opacity: 1; }
+.char.fade    { opacity: 0; }
+
+.nameplate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.np-email {
+  font-size: 10px;
+  color: var(--np-text);
+  opacity: 0.9;
+}
+
+.np-cd { font-size: 9px; color: #22c55e; }
+.np-cd.warn { color: #eab308; }
+.np-cd.crit { color: #ef4444; animation: blink 0.8s step-end infinite; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+canvas.spr {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+#empty {
+  position: absolute; inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  color: var(--dim);
+  pointer-events: none;
+  z-index: 3;
+}
+#empty .et { font-size: 13px; color: var(--dim); opacity: 0.5; }
+#empty .em { font-size: 6px; line-height: 2.2; opacity: 0.7; }
+#empty.hidden { display: none; }
+
+/* ── GEAR BUTTON ─────────────────────────────────────────── */
+#gear {
+  position: fixed;
+  right: 18px; bottom: 18px;
+  width: 44px; height: 44px;
+  background: var(--sb-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  transition: transform 0.4s, background 0.2s;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+#gear:hover { transform: rotate(60deg); background: var(--btn-hov); }
+
+/* ── OVERLAY / MODAL ─────────────────────────────────────── */
+#overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+#overlay.open { display: flex; }
+
+#modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+
+#modal h2 {
+  font-size: 14px;
+  color: var(--accent);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sb-border);
+  margin-bottom: 18px;
+}
+
+.fg { margin-bottom: 14px; }
+.fg label {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.fg input[type="text"],
+.fg input[type="url"] {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-bd);
+  border-radius: 4px;
+  padding: 9px 10px;
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fg input:focus { border-color: var(--accent); }
+
+.tg-row {
+  display: flex; align-items: center;
+  gap: 14px; margin-bottom: 14px;
+}
+.tg-row > span { font-size: 10px; color: var(--text); }
+
+.toggle { position: relative; width: 44px; height: 22px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.tg-sl {
+  position: absolute; inset: 0;
+  background: var(--sb-border);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.tg-sl::before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s;
+}
+.toggle input:checked + .tg-sl { background: var(--accent); }
+.toggle input:checked + .tg-sl::before { transform: translateX(22px); }
+
+.modal-btns {
+  display: flex; gap: 8px;
+  margin-top: 20px; flex-wrap: wrap;
+}
+
+.btn {
+  padding: 10px 14px;
+  border: none; border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  transition: filter 0.15s, transform 0.1s;
+  line-height: 1.4;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; flex: 1; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-sec { background: var(--btn-bg); color: var(--text); }
+.btn-sec:hover { background: var(--btn-hov); }
+.btn-danger { background: #3b0a0a; color: #fca5a5; }
+.btn-danger:hover { background: #7f1d1d; }
+
+/* ── SCROLLBAR ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--sb-border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sb-title">&#9733; LIVE<br>LOBBY &#9733;</div>
+
+  <div class="stat c-users">
+    <div class="stat-lbl">Online Users</div>
+    <div class="stat-val" id="s-users">0</div>
+  </div>
+
+  <div class="stat c-done">
+    <div class="stat-lbl">TRX Done</div>
+    <div class="stat-val" id="s-done">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-done"></div></div>
+  </div>
+
+  <div class="stat c-cncl">
+    <div class="stat-lbl">TRX Canceled</div>
+    <div class="stat-val" id="s-cncl">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-cncl"></div></div>
+  </div>
+
+  <div class="stat c-pend">
+    <div class="stat-lbl">TRX Pending</div>
+    <div class="stat-val" id="s-pend">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-pend"></div></div>
+  </div>
+
+  <div id="upd">—</div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div id="empty">
+    <div class="et">&#9650;&#9660;&#9650;</div>
+    <div class="em" id="empty-msg">Click &#9881; to configure<br>your API endpoints</div>
+  </div>
+</div>
+
+<!-- GEAR -->
+<button id="gear" title="Settings">&#9881;</button>
+
+<!-- MODAL -->
+<div id="overlay">
+  <div id="modal">
+    <h2>&#9881; Settings</h2>
+
+    <div class="fg">
+      <label>Users Endpoint URL</label>
+      <input type="url" id="cfg-users" placeholder="https://api.example.com/users/logged">
+    </div>
+
+    <div class="fg">
+      <label>Transactions Endpoint URL</label>
+      <input type="url" id="cfg-trx" placeholder="https://api.example.com/transactions">
+    </div>
+
+    <div class="fg">
+      <label>Auth Header Name</label>
+      <input type="text" id="cfg-hname" placeholder="Authorization">
+    </div>
+
+    <div class="fg">
+      <label>Auth Token Value</label>
+      <input type="text" id="cfg-token" placeholder="Bearer eyJ...">
+    </div>
+
+    <div class="tg-row">
+      <span>Dark Mode</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-dark" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn btn-primary" id="btn-save">Save &amp; Apply</button>
+      <button class="btn btn-sec"     id="btn-close">Close</button>
+      <button class="btn btn-danger"  id="btn-clear">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   LIVE LOBBY — pixel art user monitor SPA
+   ============================================================ */
+
+// ── Constants ──────────────────────────────────────────────
+const CFG_KEY  = 'livelobby_v1';
+const FW       = 32;          // sprite frame width  (px in spritesheet)
+const FH       = 48;          // sprite frame height (px in spritesheet)
+const WALK_F   = 8;           // walk animation frames per sheet
+const SPR_MS   = 110;         // ms per animation frame  (~9 fps)
+const SPEED    = 58;          // px / second (base movement)
+const POLL_MS  = 30_000;      // API refresh interval
+const FADE_MS  = 850;         // fade transition duration
+
+// Character definitions — folder name + sprite prefix
+const CHARS = [
+  { folder: 'Blue',               px: 'blue'            },
+  { folder: 'Green',              px: 'green'           },
+  { folder: 'Neon Blue & Purple', px: 'neonblue&purple' },
+  { folder: 'Orange',             px: 'orange'          },
+  { folder: 'Pink',               px: 'pink'            },
+  { folder: 'Pink & Neon Blue',   px: 'pink&neonblue'   },
+  { folder: 'Purple',             px: 'purple'          },
+  { folder: 'Red',                px: 'red'             },
+  { folder: 'Teal & Pink',        px: 'teal&pink'       },
+  { folder: 'Yellow & Purple',    px: 'yellow&purple'   },
+];
+
+// 8-direction standing sheet: assumed frame order
+// If sprites look wrong in standing pose, adjust these indices
+const STAND_IDX = {
+  'SOUTH':0, 'SOUTH-WEST':1, 'WEST':2, 'NORTH-WEST':3,
+  'NORTH':4, 'NORTH-EAST':5, 'EAST':6, 'SOUTH-EAST':7,
+};
+
+// ── Config / storage ───────────────────────────────────────
+const DEF = () => ({ usersUrl:'', trxUrl:'', hName:'Authorization', token:'', dark:true });
+
+function loadCfg() {
+  try { return Object.assign(DEF(), JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
+  catch { return DEF(); }
+}
+function saveCfg(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); cfg = c; }
+
+let cfg = loadCfg();
+
+// ── Theme ──────────────────────────────────────────────────
+function setTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+
+// ── Image cache ────────────────────────────────────────────
+const imgCache = {};
+function cachedImg(src) {
+  if (!imgCache[src]) { const i = new Image(); i.src = src; imgCache[src] = i; }
+  return imgCache[src];
+}
+
+// ── Sprite path ────────────────────────────────────────────
+// encodeURIComponent encodes spaces → %20 and & → %26, which is what we need
+function sprPath(char, dir) {
+  const folder = encodeURIComponent(char.folder);
+  const pfx    = encodeURIComponent(char.px);
+  return dir
+    ? `img/characters/${folder}/${pfx}_walk_${dir}-Sheet.png`
+    : `img/characters/${folder}/${pfx}_8direction_standing-Sheet.png`;
+}
+
+// ── Utility ────────────────────────────────────────────────
+// FNV-1a 32-bit hash — deterministic sprite selection per email
+function fnv32(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h;
+}
+
+function charFor(email) { return CHARS[fnv32(email) % CHARS.length]; }
+
+// Map velocity vector → 8 direction name
+function velToDir(vx, vy) {
+  if (Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01) return 'SOUTH';
+  const a = ((Math.atan2(vy, vx) * 180 / Math.PI) + 360) % 360;
+  return ['EAST','SOUTH-EAST','SOUTH','SOUTH-WEST','WEST','NORTH-WEST','NORTH','NORTH-EAST'][Math.round(a / 45) % 8];
+}
+
+// Scale factor based on user count (zoom in for few users, out for many)
+function scaleFor(n) {
+  if (n <= 2)  return 3.0;
+  if (n <= 4)  return 2.5;
+  if (n <= 7)  return 2.0;
+  if (n <= 12) return 1.5;
+  if (n <= 18) return 1.2;
+  if (n <= 25) return 1.0;
+  return Math.max(0.55, 1.0 - (n - 25) * 0.02);
+}
+
+// Format remaining seconds as MM:SS or HH:MM:SS
+function fmtCD(expiry) {
+  const r = Math.max(0, Math.floor(expiry - Date.now() / 1000));
+  const h = (r / 3600) | 0, m = ((r % 3600) / 60) | 0, s = r % 60;
+  const p = n => String(n).padStart(2, '0');
+  return h > 0 ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+
+function shortEmail(e) { return e.length > 22 ? e.slice(0, 19) + '...' : e; }
+
+function lobbySize() {
+  const l = document.getElementById('lobby');
+  return { w: l.clientWidth, h: l.clientHeight };
+}
+
+function randCandidate() {
+  const { w, h } = lobbySize();
+  const mx = 70, my = 90;  // small fixed margin so chars roam the full screen
+  return { x: mx + Math.random() * (w - mx * 2), y: my + Math.random() * (h - my * 2) };
+}
+
+// Pick the candidate that is furthest from all other active characters
+function randTarget(excludeEmail) {
+  const others = [...users.values()].filter(u => !u.fading && u.email !== excludeEmail);
+  const CANDIDATES = 12;
+  let best = null, bestScore = -1;
+  for (let i = 0; i < CANDIDATES; i++) {
+    const c = randCandidate();
+    // Score = minimum distance to any other character (maximize this)
+    const score = others.length === 0
+      ? Math.random()
+      : Math.min(...others.map(u => Math.hypot(u.x - c.x, u.y - c.y)));
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return best;
+}
+
+// ── User state ─────────────────────────────────────────────
+const users = new Map();   // email → userObj
+let lastTs = 0, lastSpr = 0;
+
+function makeUser(email, expiry) {
+  const char   = charFor(email);
+  const { w, h } = lobbySize();
+  const active = [...users.values()].filter(u => !u.fading).length;
+  const sc     = scaleFor(active + 1);
+
+  // Spread-aware start position
+  const startC = randTarget(email);
+  const x = startC.x;
+  const y = startC.y;
+  const tgt = randTarget(email);
+
+  // ── DOM ────────────────────────────────────────────────
+  const el   = document.createElement('div');   el.className = 'char';
+  const np   = document.createElement('div');   np.className = 'nameplate';
+  const emEl = document.createElement('span');  emEl.className = 'np-email';
+  emEl.textContent = shortEmail(email); emEl.title = email;
+  const cdEl = document.createElement('span');  cdEl.className = 'np-cd';
+  cdEl.textContent = fmtCD(expiry);
+  np.append(emEl, cdEl);
+
+  const cvs = document.createElement('canvas'); cvs.className = 'spr';
+  cvs.width  = Math.round(FW * sc);
+  cvs.height = Math.round(FH * sc);
+
+  el.append(np, cvs);
+  el.style.left = Math.round(x) + 'px';
+  el.style.top  = Math.round(y) + 'px';
+  document.getElementById('lobby').appendChild(el);
+
+  // Fade in on next frame
+  requestAnimationFrame(() => el.classList.add('visible'));
+
+  // Preload all directional sprites
+  const sprs = {};
+  ['NORTH','NORTH-EAST','EAST','SOUTH-EAST','SOUTH','SOUTH-WEST','WEST','NORTH-WEST']
+    .forEach(d => sprs[d] = cachedImg(sprPath(char, d)));
+  sprs.stand = cachedImg(sprPath(char, null));
+
+  return {
+    email, expiry, x, y, tx: tgt.x, ty: tgt.y,
+    vx: 0, vy: 0, dir: 'SOUTH', frame: 0,
+    moving: false, pausing: false, pauseEnd: 0,
+    sc, char, sprs, el, cvs,
+    ctx: cvs.getContext('2d'),
+    cdEl, fading: false, fadeTimer: null,
+  };
+}
+
+function removeUser(email) {
+  const u = users.get(email);
+  if (!u || u.fading) return;
+  u.fading = true;
+  u.el.classList.remove('visible');
+  u.el.classList.add('fade');
+  u.fadeTimer = setTimeout(() => {
+    u.el.remove();
+    users.delete(email);
+    reZoom();
+    syncEmptyState();
+  }, FADE_MS + 120);
+}
+
+function reviveUser(u, expiry) {
+  clearTimeout(u.fadeTimer);
+  u.fading  = false;
+  u.expiry  = expiry;
+  u.el.classList.remove('fade');
+  requestAnimationFrame(() => u.el.classList.add('visible'));
+}
+
+// Recompute canvas sizes after user count changes
+function reZoom() {
+  const active = [...users.values()].filter(u => !u.fading);
+  const sc = scaleFor(active.length);
+  active.forEach(u => {
+    if (u.sc === sc) return;
+    u.sc  = sc;
+    const nw = Math.round(FW * sc), nh = Math.round(FH * sc);
+    u.cvs.width  = nw;
+    u.cvs.height = nh;
+    u.ctx = u.cvs.getContext('2d');   // context resets on resize
+  });
+}
+
+// ── Movement ───────────────────────────────────────────────
+function moveUser(u, dt) {
+  if (u.fading) return;
+  const now = performance.now();
+
+  if (u.pausing) {
+    if (now < u.pauseEnd) { u.moving = false; return; }
+    u.pausing = false;
+  }
+
+  u.moving = true;
+  const dx = u.tx - u.x, dy = u.ty - u.y;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist < 4) {
+    // Arrived — pause then pick a new destination
+    u.pausing  = true;
+    u.pauseEnd = now + 3000 + Math.random() * 7000;
+    u.moving   = false;
+    const t = randTarget(u.email); u.tx = t.x; u.ty = t.y;
+    return;
+  }
+
+  const nx = dx / dist, ny = dy / dist;
+  u.vx = nx; u.vy = ny;
+  const step = Math.min(SPEED * dt, dist);
+  u.x += nx * step;
+  u.y += ny * step;
+  u.dir = velToDir(nx, ny);
+  u.el.style.left = Math.round(u.x) + 'px';
+  u.el.style.top  = Math.round(u.y) + 'px';
+}
+
+// ── Sprite rendering ───────────────────────────────────────
+function drawUser(u, adv) {
+  if (u.fading) return;
+  if (adv && u.moving) u.frame = (u.frame + 1) % WALK_F;
+
+  const { ctx, cvs, sc, sprs, dir, moving, frame } = u;
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  const img = moving ? sprs[dir] : sprs.stand;
+  const sx  = moving ? frame * FW : (STAND_IDX[dir] ?? 0) * FW;
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, sx, 0, FW, FH, 0, 0, cvs.width, cvs.height);
+  } else {
+    // Ghost placeholder while image loads
+    ctx.fillStyle = 'rgba(80,120,255,0.18)';
+    ctx.fillRect(4, 4, cvs.width - 8, cvs.height - 8);
+  }
+}
+
+// ── Countdown ticker ───────────────────────────────────────
+setInterval(() => {
+  const now = Date.now() / 1000;
+  users.forEach((u, email) => {
+    if (u.fading) return;
+    const r = u.expiry - now;
+    u.cdEl.textContent = fmtCD(u.expiry);
+    u.cdEl.className   = r < 60 ? 'np-cd crit' : r < 300 ? 'np-cd warn' : 'np-cd';
+    if (r <= 0) removeUser(email);
+  });
+}, 1000);
+
+// ── Render loop ────────────────────────────────────────────
+function renderLoop(ts) {
+  const dt  = Math.min((ts - lastTs) / 1000, 0.05);   // cap delta at 50 ms
+  lastTs = ts;
+  const adv = ts - lastSpr >= SPR_MS;
+  if (adv) lastSpr = ts;
+  users.forEach(u => { moveUser(u, dt); drawUser(u, adv); });
+  requestAnimationFrame(renderLoop);
+}
+
+// ── API ────────────────────────────────────────────────────
+async function apiFetch(url) {
+  const h = {};
+  if (cfg.hName && cfg.token) h[cfg.hName] = cfg.token;
+  return (await fetch(url, { headers: h })).json();
+}
+
+async function fetchUsers() {
+  if (!cfg.usersUrl) return;
+  const json = await apiFetch(cfg.usersUrl);
+  const data = json.data || {};
+
+  // Remove users that disappeared from the list
+  users.forEach((u, email) => { if (!(email in data) && !u.fading) removeUser(email); });
+
+  // Add new users / update existing
+  let changed = false;
+  for (const [email, expiry] of Object.entries(data)) {
+    if (users.has(email)) {
+      const u = users.get(email);
+      u.fading ? reviveUser(u, expiry) : (u.expiry = expiry);
+    } else {
+      users.set(email, makeUser(email, expiry));
+      changed = true;
+    }
+  }
+  if (changed) reZoom();
+
+  const active = [...users.values()].filter(u => !u.fading).length;
+  document.getElementById('s-users').textContent = active;
+  syncEmptyState();
+}
+
+async function fetchTrx() {
+  if (!cfg.trxUrl) return;
+  const json = await apiFetch(cfg.trxUrl);
+  const t    = json.trx_status_total || {};
+  const done = t.done || 0, cncl = t.canceled || 0, pend = t.pending || 0;
+  const tot  = Math.max(done + cncl + pend, 1);
+
+  document.getElementById('s-done').textContent = done.toLocaleString();
+  document.getElementById('s-cncl').textContent = cncl.toLocaleString();
+  document.getElementById('s-pend').textContent = pend.toLocaleString();
+  document.getElementById('b-done').style.width = (done / tot * 100) + '%';
+  document.getElementById('b-cncl').style.width = (cncl / tot * 100) + '%';
+  document.getElementById('b-pend').style.width = (pend / tot * 100) + '%';
+}
+
+async function fetchAll() {
+  const upd = document.getElementById('upd');
+  upd.textContent = 'Fetching...';
+  try {
+    await Promise.all([fetchUsers(), fetchTrx()]);
+    upd.textContent = 'Updated\n' + new Date().toLocaleTimeString();
+  } catch (e) {
+    upd.textContent = 'Fetch error';
+    console.error('[LiveLobby]', e);
+  }
+}
+
+// ── Empty state ────────────────────────────────────────────
+function syncEmptyState() {
+  const hasUrl = !!cfg.usersUrl;
+  const active = [...users.values()].filter(u => !u.fading).length;
+  const empty  = document.getElementById('empty');
+  const msg    = document.getElementById('empty-msg');
+
+  if (hasUrl && active > 0) {
+    empty.classList.add('hidden');
+  } else {
+    empty.classList.remove('hidden');
+    msg.innerHTML = hasUrl
+      ? 'No users online right now'
+      : 'Click &#9881; to configure<br>your API endpoints';
+  }
+}
+
+// ── Settings modal ─────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function openModal() {
+  $('cfg-users').value  = cfg.usersUrl;
+  $('cfg-trx').value    = cfg.trxUrl;
+  $('cfg-hname').value  = cfg.hName;
+  $('cfg-token').value  = cfg.token;
+  $('cfg-dark').checked = cfg.dark !== false;
+  $('overlay').classList.add('open');
+}
+function closeModal() { $('overlay').classList.remove('open'); }
+
+$('gear').addEventListener('click', openModal);
+$('btn-close').addEventListener('click', closeModal);
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
+
+$('cfg-dark').addEventListener('change', e => setTheme(e.target.checked));
+
+$('btn-save').addEventListener('click', () => {
+  saveCfg({
+    usersUrl: $('cfg-users').value.trim(),
+    trxUrl:   $('cfg-trx').value.trim(),
+    hName:    $('cfg-hname').value.trim() || 'Authorization',
+    token:    $('cfg-token').value.trim(),
+    dark:     $('cfg-dark').checked,
+  });
+  setTheme(cfg.dark);
+  closeModal();
+  clearInterval(pollTimer);
+  fetchAll();
+  pollTimer = setInterval(fetchAll, POLL_MS);
+});
+
+$('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear all settings and reset the lobby?')) return;
+  localStorage.removeItem(CFG_KEY);
+  cfg = DEF();
+
+  // Fade out all characters
+  [...users.keys()].forEach(removeUser);
+
+  // Reset stats
+  ['s-users','s-done','s-cncl','s-pend'].forEach(id => $(id).textContent = '0');
+  ['b-done','b-cncl','b-pend'].forEach(id => $(id).style.width = '0%');
+  $('upd').textContent = '—';
+
+  setTheme(true);
+  $('cfg-dark').checked = true;
+  syncEmptyState();
+});
+
+// ── Boot ───────────────────────────────────────────────────
+setTheme(cfg.dark !== false);
+syncEmptyState();
+
+// Auto-open settings if not yet configured
+if (!cfg.usersUrl) setTimeout(openModal, 500);
+
+// Start render loop
+requestAnimationFrame(ts => {
+  lastTs = ts; lastSpr = ts;
+  requestAnimationFrame(renderLoop);
+});
+
+// Initial data fetch + polling
+fetchAll();
+let pollTimer = setInterval(fetchAll, POLL_MS);
+</script>
+</body>
+</html>
