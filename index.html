@@ -140,6 +140,8 @@ body {
 .c-cncl  .stat-fill { background: #eab308; }
 .c-pend  .stat-val  { color: #ef4444; }
 .c-pend  .stat-fill { background: #ef4444; }
+.c-out   .stat-val  { color: #ef4444; }
+.c-in    .stat-val  { color: #22c55e; }
 
 #upd {
   font-size: 10px;
@@ -191,8 +193,11 @@ body {
 .char.visible { opacity: 1; }
 .char.fade    { opacity: 0; }
 
-/* Enable pointer events only on the nameplate area */
-.char.visible .nameplate { pointer-events: auto; cursor: default; }
+/* Enable pointer events on the whole visible character */
+.char.visible { pointer-events: auto; }
+
+/* Show nameplate when tapped/clicked */
+.char.tapped .nameplate { opacity: 1; }
 
 .nameplate {
   display: flex;
@@ -207,10 +212,37 @@ body {
   white-space: nowrap;
   backdrop-filter: blur(4px);
   opacity: 0.4;
-  transition: opacity 0.25s ease;
+  max-height: 60px;
+  overflow: hidden;
+  transition: opacity 0.25s ease, max-height 0.25s ease,
+              padding 0.25s ease, margin 0.25s ease, border-width 0.25s ease, gap 0.25s ease;
 }
 .nameplate:hover,
 .nameplate:active { opacity: 1; }
+
+/* Nameplates hidden: collapse out of flex flow so bubble sits above the sprite */
+body.hide-np .nameplate {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  gap: 0;
+}
+/* Restore on hover or tap */
+body.hide-np .nameplate:hover,
+body.hide-np .nameplate:active,
+body.hide-np .char.tapped .nameplate {
+  opacity: 1;
+  max-height: 60px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  gap: 3px;
+}
 
 .np-email {
   font-size: 10px;
@@ -219,6 +251,107 @@ body {
 }
 
 .np-cd { font-size: 9px; color: #22c55e; }
+
+/* ── SPEECH BUBBLE ───────────────────────────────────────── */
+.bubble-wrap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, calc(-100% - 6px));  /* above nameplate, relative to .char */
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+}
+.char.visible .bubble-wrap { pointer-events: auto; }
+.char:hover .bubble-wrap,
+.char.tapped .bubble-wrap  { opacity: 1; }
+
+/* Speech bubbles hidden via settings */
+body.hide-bubble .bubble-wrap { opacity: 0; }
+body.hide-bubble .char:hover .bubble-wrap,
+body.hide-bubble .char.tapped .bubble-wrap { opacity: 1; }
+
+.bubble {
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  backdrop-filter: blur(4px);
+  min-width: 80px;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;          /* no gap — spacing handled per-line to avoid phantom height */
+  position: relative;
+}
+
+/* tail pointing down */
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--np-border);
+  border-bottom: none;
+}
+.bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--np-bg);
+  border-bottom: none;
+  z-index: 1;
+}
+
+.bubble-line {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--accent);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 190px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.35s ease, transform 0.35s ease, max-height 0.3s ease, margin-top 0.3s ease;
+}
+
+/* Latest revealed line — always visible */
+.bubble-line.show:last-child {
+  max-height: 20px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Older lines — hidden by default, shown on hover/touch */
+.bubble-line.show:not(:last-child) {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(0);
+}
+
+/* Expand all revealed lines on hover or touch-toggle */
+.char:hover .bubble .bubble-line.show,
+.bubble.expanded .bubble-line.show {
+  max-height: 20px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Spacing between lines only when expanded (avoids phantom height when collapsed) */
+.char:hover .bubble .bubble-line.show + .bubble-line.show,
+.bubble.expanded .bubble-line.show + .bubble-line.show {
+  margin-top: 3px;
+}
 .np-cd.warn { color: #eab308; }
 .np-cd.crit { color: #ef4444; animation: blink 0.8s step-end infinite; }
 
@@ -316,7 +449,9 @@ canvas.spr {
   font-size: 10px;
 }
 .ul-row:last-child { border-bottom: none; }
-.ul-email { color: var(--text); word-break: break-all; flex: 1; }
+.ul-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.ul-email { color: var(--text); word-break: break-all; }
+.ul-path  { font-size: 6px; color: var(--accent); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ul-cd { color: #22c55e; flex-shrink: 0; }
 .ul-cd.warn { color: #eab308; }
 .ul-cd.crit { color: #ef4444; }
@@ -525,6 +660,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="stat-track"><div class="stat-fill" id="b-pend"></div></div>
   </div>
 
+  <div class="stat c-out">
+    <div class="stat-lbl">Total Out</div>
+    <div class="stat-val" id="s-out">↑ 0</div>
+  </div>
+
+  <div class="stat c-in">
+    <div class="stat-lbl">Total In</div>
+    <div class="stat-val" id="s-in">↓ 0</div>
+  </div>
+
   <div id="upd">—</div>
 </div>
 
@@ -584,6 +729,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </label>
     </div>
 
+    <div class="tg-row">
+      <span>Show Nameplates</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-shownp" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
+    <div class="tg-row">
+      <span>Show Speech Bubbles</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-showbubble" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
     <div class="modal-btns">
       <button class="btn btn-primary" id="btn-save">Save &amp; Apply</button>
       <button class="btn btn-sec"     id="btn-close">Close</button>
@@ -629,7 +790,7 @@ const STAND_IDX = {
 };
 
 // ── Config / storage ───────────────────────────────────────
-const DEF = () => ({ usersUrl:'', trxUrl:'', hName:'Authorization', token:'', dark:true });
+const DEF = () => ({ usersUrl:'', trxUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true });
 
 function loadCfg() {
   try { return Object.assign(DEF(), JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
@@ -642,6 +803,14 @@ let cfg = loadCfg();
 // ── Theme ──────────────────────────────────────────────────
 function setTheme(dark) {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+
+function applyNpVisibility(show) {
+  document.body.classList.toggle('hide-np', !show);
+}
+
+function applyBubbleVisibility(show) {
+  document.body.classList.toggle('hide-bubble', !show);
 }
 
 // ── Image cache ────────────────────────────────────────────
@@ -743,19 +912,37 @@ function makeUser(email, expiry) {
   const tgt = randTarget(email);
 
   // ── DOM ────────────────────────────────────────────────
-  const el   = document.createElement('div');   el.className = 'char';
-  const np   = document.createElement('div');   np.className = 'nameplate';
-  const emEl = document.createElement('span');  emEl.className = 'np-email';
+  const el   = document.createElement('div'); el.className = 'char';
+  const np   = document.createElement('div'); np.className = 'nameplate';
+  const emEl = document.createElement('span'); emEl.className = 'np-email';
   emEl.textContent = shortEmail(email); emEl.title = email;
-  const cdEl = document.createElement('span');  cdEl.className = 'np-cd';
+  const cdEl = document.createElement('span'); cdEl.className = 'np-cd';
   cdEl.textContent = fmtCD(expiry);
   np.append(emEl, cdEl);
+
+  // Speech bubble (sits above character, positioned relative to .char)
+  const bWrap  = document.createElement('div'); bWrap.className = 'bubble-wrap';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  bWrap.appendChild(bubble);
+
+  // Click/touch anywhere on the character: toggle expanded bubble + show nameplate
+  let _touchHandled = false;
+  el.addEventListener('touchstart', () => {
+    _touchHandled = true;
+    bubble.classList.toggle('expanded');
+    el.classList.toggle('tapped');
+  }, { passive: true });
+  el.addEventListener('click', () => {
+    if (_touchHandled) { _touchHandled = false; return; }
+    bubble.classList.toggle('expanded');
+    el.classList.toggle('tapped');
+  });
 
   const cvs = document.createElement('canvas'); cvs.className = 'spr';
   cvs.width  = Math.round(FW * sc);
   cvs.height = Math.round(FH * sc);
 
-  el.append(np, cvs);
+  el.append(bWrap, np, cvs);
   el.style.left = Math.round(x) + 'px';
   el.style.top  = Math.round(y) + 'px';
   document.getElementById('lobby').appendChild(el);
@@ -775,13 +962,72 @@ function makeUser(email, expiry) {
     moving: false, pausing: false, pauseEnd: 0,
     sc, char, sprs, el, cvs,
     ctx: cvs.getContext('2d'),
-    cdEl, fading: false, fadeTimer: null,
+    cdEl, bubble,
+    actQueue:    [],   // pending {key, path} items waiting to be revealed
+    actTimer:    null, // interval handle for sequential reveal
+    renderedActs: {},  // key → DOM line element (already in bubble)
+    fading: false, fadeTimer: null,
   };
+}
+
+// Feed a new activities list to a user — reveal one line every 3s
+// Stable key for an activity: index:path:timestamp
+function actKey(idx, act) { return `${idx}:${act.path}:${act.timestamp}`; }
+
+function updateActivities(u, acts) {
+  // acts = [{path, timestamp}, ...] sorted by timestamp asc
+
+  // Build the full set of keys the API is currently sending
+  const incomingKeys = new Set(acts.map((a, i) => actKey(i, a)));
+
+  // Remove lines that are no longer present in the API response
+  for (const [key, line] of Object.entries(u.renderedActs)) {
+    if (!incomingKeys.has(key)) {
+      line.classList.remove('show');
+      setTimeout(() => line.remove(), 400);
+      delete u.renderedActs[key];
+    }
+  }
+
+  // Find new activities not yet rendered, preserving order
+  const toQueue = acts
+    .map((a, i) => ({ key: actKey(i, a), path: a.path }))
+    .filter(({ key }) => !u.renderedActs[key]);
+
+  if (!toQueue.length) return;
+
+  // Append new items to the existing queue
+  u.actQueue.push(...toQueue);
+
+  // If no timer is running, kick it off
+  if (u.actTimer) return;
+
+  function revealNext() {
+    if (!u.actQueue.length) {
+      clearInterval(u.actTimer); u.actTimer = null; return;
+    }
+    const { key, path } = u.actQueue.shift();
+    // Guard: may have been removed while queued
+    if (u.renderedActs[key]) return;
+    const line = document.createElement('div');
+    line.className = 'bubble-line';
+    line.textContent = path;
+    line.title = path;
+    u.bubble.appendChild(line);
+    u.renderedActs[key] = line;
+    requestAnimationFrame(() => requestAnimationFrame(() => line.classList.add('show')));
+  }
+
+  revealNext();  // first one immediately
+  u.actTimer = setInterval(revealNext, 3000);
 }
 
 function removeUser(email) {
   const u = users.get(email);
   if (!u || u.fading) return;
+  if (u.actTimer) { clearInterval(u.actTimer); u.actTimer = null; }
+  u.actQueue = [];
+  u.renderedActs = {};
   u.fading = true;
   u.el.classList.remove('visible');
   u.el.classList.add('fade');
@@ -899,20 +1145,37 @@ async function apiFetch(url) {
 
 async function fetchUsers() {
   if (!cfg.usersUrl) return;
-  const json = await apiFetch(cfg.usersUrl);
-  const data = json.data || {};
+  const json   = await apiFetch(cfg.usersUrl);
+  const root   = json.data || {};
+
+  // Support both old shape (data = {email:ts}) and new shape (data.logged_users)
+  const logged     = root.logged_users || root;
+  const activities = root.activities   || [];
+
+  // Group activities per email, sorted by timestamp asc
+  const actsByEmail = {};
+  for (const act of activities) {
+    if (!actsByEmail[act.email]) actsByEmail[act.email] = [];
+    actsByEmail[act.email].push(act);
+  }
+  for (const email in actsByEmail)
+    actsByEmail[email].sort((a, b) => a.timestamp - b.timestamp);
 
   // Remove users that disappeared from the list
-  users.forEach((u, email) => { if (!(email in data) && !u.fading) removeUser(email); });
+  users.forEach((u, email) => { if (!(email in logged) && !u.fading) removeUser(email); });
 
   // Add new users / update existing
   let changed = false;
-  for (const [email, expiry] of Object.entries(data)) {
+  for (const [email, expiry] of Object.entries(logged)) {
+    const acts = actsByEmail[email] || [];
     if (users.has(email)) {
       const u = users.get(email);
-      u.fading ? reviveUser(u, expiry) : (u.expiry = expiry);
+      if (u.fading) reviveUser(u, expiry); else u.expiry = expiry;
+      if (acts.length) updateActivities(u, acts);
     } else {
-      users.set(email, makeUser(email, expiry));
+      const u = makeUser(email, expiry);
+      users.set(email, u);
+      if (acts.length) updateActivities(u, acts);
       changed = true;
     }
   }
@@ -936,6 +1199,9 @@ async function fetchTrx() {
   document.getElementById('b-done').style.width = (done / tot * 100) + '%';
   document.getElementById('b-cncl').style.width = (cncl / tot * 100) + '%';
   document.getElementById('b-pend').style.width = (pend / tot * 100) + '%';
+
+  document.getElementById('s-out').textContent = '↑ ' + (json.total_out || 0).toLocaleString();
+  document.getElementById('s-in').textContent  = '↓ ' + (json.total_in  || 0).toLocaleString();
 }
 
 async function fetchAll() {
@@ -975,7 +1241,9 @@ function openModal() {
   $('cfg-trx').value    = cfg.trxUrl;
   $('cfg-hname').value  = cfg.hName;
   $('cfg-token').value  = cfg.token;
-  $('cfg-dark').checked = cfg.dark !== false;
+  $('cfg-dark').checked      = cfg.dark !== false;
+  $('cfg-shownp').checked    = cfg.showNp !== false;
+  $('cfg-showbubble').checked = cfg.showBubble !== false;
   $('overlay').classList.add('open');
 }
 function closeModal() { $('overlay').classList.remove('open'); }
@@ -995,10 +1263,18 @@ function openUsersList() {
   } else {
     const now = Date.now() / 1000;
     list.innerHTML = active.map(u => {
-      const r = u.expiry - now;
-      const cls = r < 60 ? 'ul-cd crit' : r < 300 ? 'ul-cd warn' : 'ul-cd';
+      const r    = u.expiry - now;
+      const cls  = r < 60 ? 'ul-cd crit' : r < 300 ? 'ul-cd warn' : 'ul-cd';
+      // Collect visible paths from bubble lines
+      const visiblePaths = [...u.bubble.querySelectorAll('.bubble-line.show')]
+        .map(el => el.textContent).filter(Boolean);
+      const pathsHtml = visiblePaths.map(p =>
+        `<span class="ul-path" title="${p}">${p}</span>`).join('');
       return `<div class="ul-row">
-        <span class="ul-email" title="${u.email}">${u.email}</span>
+        <div class="ul-info">
+          <span class="ul-email" title="${u.email}">${u.email}</span>
+          ${pathsHtml}
+        </div>
         <span class="${cls}">${fmtCD(u.expiry)}</span>
       </div>`;
     }).join('');
@@ -1011,7 +1287,9 @@ $('users-btn').addEventListener('click', openUsersList);
 $('users-modal-close').addEventListener('click', closeUsersList);
 $('users-overlay').addEventListener('click', e => { if (e.target === $('users-overlay')) closeUsersList(); });
 
-$('cfg-dark').addEventListener('change', e => setTheme(e.target.checked));
+$('cfg-dark').addEventListener('change',       e => setTheme(e.target.checked));
+$('cfg-shownp').addEventListener('change',     e => applyNpVisibility(e.target.checked));
+$('cfg-showbubble').addEventListener('change', e => applyBubbleVisibility(e.target.checked));
 
 $('btn-save').addEventListener('click', () => {
   saveCfg({
@@ -1019,9 +1297,13 @@ $('btn-save').addEventListener('click', () => {
     trxUrl:   $('cfg-trx').value.trim(),
     hName:    $('cfg-hname').value.trim() || 'Authorization',
     token:    $('cfg-token').value.trim(),
-    dark:     $('cfg-dark').checked,
+    dark:       $('cfg-dark').checked,
+    showNp:     $('cfg-shownp').checked,
+    showBubble: $('cfg-showbubble').checked,
   });
   setTheme(cfg.dark);
+  applyNpVisibility(cfg.showNp);
+  applyBubbleVisibility(cfg.showBubble);
   closeModal();
   clearInterval(pollTimer);
   fetchAll();
@@ -1039,15 +1321,23 @@ $('btn-clear').addEventListener('click', () => {
   // Reset stats
   ['s-users','s-done','s-cncl','s-pend'].forEach(id => $(id).textContent = '0');
   ['b-done','b-cncl','b-pend'].forEach(id => $(id).style.width = '0%');
+  $('s-out').textContent = '↑ 0';
+  $('s-in').textContent  = '↓ 0';
   $('upd').textContent = '—';
 
   setTheme(true);
-  $('cfg-dark').checked = true;
+  applyNpVisibility(true);
+  applyBubbleVisibility(true);
+  $('cfg-dark').checked        = true;
+  $('cfg-shownp').checked      = true;
+  $('cfg-showbubble').checked  = true;
   syncEmptyState();
 });
 
 // ── Boot ───────────────────────────────────────────────────
 setTheme(cfg.dark !== false);
+applyNpVisibility(cfg.showNp !== false);
+applyBubbleVisibility(cfg.showBubble !== false);
 syncEmptyState();
 
 // Title from URL hash: livelobby.github.io/#MyTitle → "MyTitle LOBBY"
