@@ -1254,7 +1254,11 @@ function layoutCircles() {
 function updateCircleSizes() {
   const counts = {};
   users.forEach(u => { if (u.circleKey) counts[u.circleKey] = (counts[u.circleKey] || 0) + 1; });
-  circles.forEach(c => { c.r = Math.min(c.maxR, c.baseR + (counts[c.path] || 0) * CIRCLE_GROWTH_PER_USER); });
+  circles.forEach(c => {
+    const n = counts[c.path] || 0;
+    c.r = Math.min(c.maxR, c.baseR + n * CIRCLE_GROWTH_PER_USER);
+    c.occupied = n > 0;
+  });
   renderCircles();
 
   users.forEach(u => {
@@ -1279,8 +1283,9 @@ function renderCircles() {
     el.style.left   = c.x + 'px';
     el.style.top    = c.y + 'px';
     el.style.width  = el.style.height = (c.r * 2) + 'px';
-    el.style.borderColor = c.color;
-    el.style.background  = c.color + '1a';
+    const color = c.occupied ? c.color : '#6b7280';
+    el.style.borderColor = color;
+    el.style.background  = color + '1a';
     el.title = c.title;
     const lbl = document.createElement('span');
     lbl.className = 'cm-label';
