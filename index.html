@@ -356,6 +356,7 @@ body {
   justify-content: center;
   text-align: center;
   padding: 6px;
+  transition: width 0.6s ease, height 0.6s ease;
 }
 .cm-label {
   font-size: 6px;
@@ -1205,36 +1206,67 @@ function parseCircles(text) {
   }).filter(c => c.path);
 }
 
-let circles = [];   // laid-out: {path, title, x, y, r, color}
+let circles = [];   // laid-out: {path, title, x, y, r, baseR, maxR, color}
+const CIRCLE_GROWTH_PER_USER = 12;   // px of radius added per assigned person
 
 function layoutCircles() {
-  const { w } = lobbySize();
+  const { w, h } = lobbySize();
   const defs = cfg.circles || [];
   circles = [];
   if (!defs.length) { renderCircles(); return; }
 
-  const n    = defs.length;
-  const r    = Math.max(34, Math.min(60, Math.floor(140 / Math.sqrt(n))));
-  const gap  = 24;
-  const cellW  = r * 2 + gap;
-  const usableW = Math.max(w - 100, cellW);
-  const perRow  = Math.max(1, Math.floor(usableW / cellW));
-  const rowH    = r * 2 + gap;
-  const startY  = 70 + r;
+  const n = defs.length;
+  const marginX = 90, marginY = 110;
+  const usableW = Math.max(w - marginX * 2, 60);
+  const usableH = Math.max(h - marginY * 2, 60);
+
+  // Grid sized to the lobby's aspect ratio so circles spread across the whole floor
+  const cols = Math.max(1, Math.round(Math.sqrt(n * usableW / usableH)));
+  const rows = Math.max(1, Math.ceil(n / cols));
+  const cellW = usableW / cols;
+  const cellH = usableH / rows;
+
+  const gapPad = 16;
+  const baseR  = Math.max(30, Math.min(60, Math.floor(Math.min(cellW, cellH) / 2) - gapPad));
+  const maxR   = Math.max(baseR, Math.floor(Math.min(cellW, cellH) / 2) - 6);
+
+  const totalGridH = rows * cellH;
+  const startY = marginY + (usableH - totalGridH) / 2 + cellH / 2;
 
   defs.forEach((def, i) => {
-    const row = Math.floor(i / perRow);
-    const col = i % perRow;
-    const itemsInRow = Math.min(perRow, n - row * perRow);
-    const rowW = itemsInRow * cellW - gap;
-    const startX = (w - rowW) / 2 + r;
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const itemsInRow = Math.min(cols, n - row * cols);
+    const rowW = itemsInRow * cellW;
+    const startX = marginX + (usableW - rowW) / 2 + cellW / 2;
     circles.push({
       path: def.path, title: def.title,
-      x: startX + col * cellW, y: startY + row * rowH,
-      r, color: circleColor(def.path),
+      x: startX + col * cellW, y: startY + row * cellH,
+      r: baseR, baseR, maxR,
+      color: circleColor(def.path),
     });
   });
+  updateCircleSizes();
+}
+
+// Grow each circle with how many people are currently assigned to it (down to baseR),
+// then nudge any occupant whose target fell outside a (possibly shrunk) circle back in.
+function updateCircleSizes() {
+  const counts = {};
+  users.forEach(u => { if (u.circleKey) counts[u.circleKey] = (counts[u.circleKey] || 0) + 1; });
+  circles.forEach(c => { c.r = Math.min(c.maxR, c.baseR + (counts[c.path] || 0) * CIRCLE_GROWTH_PER_USER); });
   renderCircles();
+
+  users.forEach(u => {
+    if (!u.circleKey) return;
+    const c = circles.find(c => c.path === u.circleKey);
+    if (!c) return;
+    u.circle = c;
+    if (Math.hypot(u.tx - c.x, u.ty - c.y) > c.r - 8) {
+      const p = randPointInCircle(c);
+      u.tx = p.x; u.ty = p.y;
+    }
+  });
 }
 
 function renderCircles() {
@@ -1580,6 +1612,7 @@ async function fetchUsers() {
     }
   }
   if (changed) reZoom();
+  updateCircleSizes();
 
   const active = [...users.values()].filter(u => !u.fading).length;
   document.getElementById('s-users').textContent = active;
@@ -1944,6 +1977,7 @@ $('btn-save').addEventListener('click', () => {
   applyBubbleVisibility(cfg.showBubble);
   layoutCircles();
   users.forEach(u => setUserCircle(u, findCircleForActs(u.acts)));
+  updateCircleSizes();
   closeModal();
   clearInterval(pollTimer);
   fetchAll();
@@ -1980,15 +2014,7 @@ $('btn-clear').addEventListener('click', () => {
   syncEmptyState();
 });
 
-window.addEventListener('resize', () => {
-  layoutCircles();
-  users.forEach(u => {
-    if (!u.circleKey) return;
-    const c = circles.find(c => c.path === u.circleKey);
-    u.circle = c || null;
-    if (c) { const p = randPointInCircle(c); u.tx = p.x; u.ty = p.y; }
-  });
-});
+window.addEventListener('resize', layoutCircles);
 
 // ── Boot ───────────────────────────────────────────────────
 setTheme(cfg.dark !== false);
