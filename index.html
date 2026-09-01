@@ -195,6 +195,80 @@ body {
   margin-top: 5px;
 }
 
+/* ── CONCILIATOR WIDGET ──────────────────────────────────── */
+#stat-concil { cursor: pointer; }
+#stat-concil:hover { background: var(--btn-hov); }
+
+.concil-squares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 3px;
+}
+.concil-sq {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+.concil-sq.st-green  { background: #22c55e; }
+.concil-sq.st-yellow { background: #eab308; animation: blink 1s step-end infinite; }
+.concil-sq.st-red    { background: #ef4444; }
+.concil-empty { font-size: 7px; color: var(--dim); }
+
+/* Conciliator detail modal */
+#concil-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 460px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#concil-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#concil-detail { overflow-y: auto; flex: 1; padding: 12px 16px; }
+#concil-modal-footer { display: flex; gap: 8px; margin: 10px 14px 14px; flex-shrink: 0; }
+
+.cc-section { margin-bottom: 14px; }
+.cc-section-title {
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--sb-border);
+  padding-bottom: 4px;
+}
+.cc-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 8px; padding: 3px 0; }
+.cc-kv .k { color: var(--dim); }
+.cc-kv .v { color: var(--text); text-align: right; word-break: break-all; }
+
+.cc-type-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--sb-border);
+  border-radius: 4px;
+}
+.cc-type-head { display: flex; align-items: center; gap: 8px; }
+.cc-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.cc-type-name { font-size: 9px; color: var(--text); flex: 1; text-transform: uppercase; }
+.cc-type-body { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 7px; }
+.cc-type-body .k { color: var(--dim); }
+.cc-type-body .v { color: var(--text); }
+.cc-err { color: #ef4444; }
+
 /* Chart detail modal */
 #chart-modal {
   background: var(--modal-bg);
@@ -263,6 +337,33 @@ body {
   );
   pointer-events: none;
   z-index: 1;
+}
+
+/* ── STATION CIRCLES ─────────────────────────────────────── */
+#circles-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.circle-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px dashed var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6px;
+}
+.cm-label {
+  font-size: 6px;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+  max-width: 90%;
+  opacity: 0.85;
 }
 
 /* ── CHARACTERS ──────────────────────────────────────────── */
@@ -551,7 +652,7 @@ canvas.spr {
 }
 
 /* ── OVERLAY / MODAL ─────────────────────────────────────── */
-#overlay, #users-overlay, #chart-overlay {
+#overlay, #users-overlay, #chart-overlay, #concil-overlay {
   position: fixed; inset: 0;
   background: var(--overlay);
   z-index: 200;
@@ -560,7 +661,7 @@ canvas.spr {
   justify-content: center;
   backdrop-filter: blur(6px);
 }
-#overlay.open, #users-overlay.open, #chart-overlay.open { display: flex; }
+#overlay.open, #users-overlay.open, #chart-overlay.open, #concil-overlay.open { display: flex; }
 
 #modal {
   background: var(--modal-bg);
@@ -605,6 +706,24 @@ canvas.spr {
   transition: border-color 0.2s;
 }
 .fg input:focus { border-color: var(--accent); }
+
+.fg textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  background: var(--input-bg);
+  border: 1px solid var(--input-bd);
+  border-radius: 4px;
+  padding: 9px 10px;
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  line-height: 1.6;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fg textarea:focus { border-color: var(--accent); }
+.fg .fg-hint { font-size: 7px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
 
 .tg-row {
   display: flex; align-items: center;
@@ -763,11 +882,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <canvas id="chart-cvs" width="174" height="32"></canvas>
   </div>
 
+  <div class="stat" id="stat-concil" title="Click for details">
+    <div class="stat-lbl">Conciliator</div>
+    <div class="concil-squares" id="concil-squares"></div>
+  </div>
+
   <div id="upd">—</div>
 </div>
 
 <!-- LOBBY -->
 <div id="lobby">
+  <div id="circles-layer"></div>
   <div id="empty">
     <div class="et">&#9650;&#9660;&#9650;</div>
     <div class="em" id="empty-msg">Click &#9881; to configure<br>your API endpoints</div>
@@ -801,6 +926,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
+<!-- CONCILIATOR DETAIL MODAL -->
+<div id="concil-overlay">
+  <div id="concil-modal">
+    <h2>&#9636; Conciliator</h2>
+    <div id="concil-detail"></div>
+    <div id="concil-modal-footer">
+      <button class="btn btn-sec" id="concil-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div id="overlay">
   <div id="modal">
@@ -817,6 +953,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
 
     <div class="fg">
+      <label>Conciliator Endpoint URL</label>
+      <input type="url" id="cfg-concil" placeholder="https://api.example.com/conciliator/status">
+    </div>
+
+    <div class="fg">
       <label>Auth Header Name</label>
       <input type="text" id="cfg-hname" placeholder="Authorization">
     </div>
@@ -824,6 +965,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="fg">
       <label>Auth Token Value</label>
       <input type="text" id="cfg-token" placeholder="Bearer eyJ...">
+    </div>
+
+    <div class="fg">
+      <label>Circles (one per line, path:title)</label>
+      <textarea id="cfg-circles" placeholder="/transfer/ext:transferencia externa"></textarea>
+      <div class="fg-hint">A person walking with that path in their activity list will walk into and stay inside that circle.</div>
     </div>
 
     <div class="tg-row">
@@ -895,7 +1042,7 @@ const STAND_IDX = {
 };
 
 // ── Config / storage ───────────────────────────────────────
-const DEF = () => ({ usersUrl:'', trxUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true, hiddenTypes:[] });
+const DEF = () => ({ usersUrl:'', trxUrl:'', concilUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true, hiddenTypes:[], circles:[] });
 
 function loadCfg() {
   try { return Object.assign(DEF(), JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
@@ -1044,6 +1191,104 @@ function randTarget(excludeEmail) {
   return best;
 }
 
+// ── Station circles ────────────────────────────────────────
+// Config lines "path:title" → laid-out circles a matching person walks into
+const CIRCLE_COLORS = ['#3b82f6','#22c55e','#eab308','#ef4444','#a855f7','#06b6d4','#f97316','#ec4899'];
+function circleColor(path) { return CIRCLE_COLORS[fnv32(path) % CIRCLE_COLORS.length]; }
+
+function parseCircles(text) {
+  return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const idx = line.indexOf(':');
+    const path  = (idx === -1 ? line : line.slice(0, idx)).trim();
+    const title = (idx === -1 ? line : line.slice(idx + 1)).trim();
+    return { path, title };
+  }).filter(c => c.path);
+}
+
+let circles = [];   // laid-out: {path, title, x, y, r, color}
+
+function layoutCircles() {
+  const { w } = lobbySize();
+  const defs = cfg.circles || [];
+  circles = [];
+  if (!defs.length) { renderCircles(); return; }
+
+  const n    = defs.length;
+  const r    = Math.max(34, Math.min(60, Math.floor(140 / Math.sqrt(n))));
+  const gap  = 24;
+  const cellW  = r * 2 + gap;
+  const usableW = Math.max(w - 100, cellW);
+  const perRow  = Math.max(1, Math.floor(usableW / cellW));
+  const rowH    = r * 2 + gap;
+  const startY  = 70 + r;
+
+  defs.forEach((def, i) => {
+    const row = Math.floor(i / perRow);
+    const col = i % perRow;
+    const itemsInRow = Math.min(perRow, n - row * perRow);
+    const rowW = itemsInRow * cellW - gap;
+    const startX = (w - rowW) / 2 + r;
+    circles.push({
+      path: def.path, title: def.title,
+      x: startX + col * cellW, y: startY + row * rowH,
+      r, color: circleColor(def.path),
+    });
+  });
+  renderCircles();
+}
+
+function renderCircles() {
+  const layer = document.getElementById('circles-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  circles.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'circle-marker';
+    el.style.left   = c.x + 'px';
+    el.style.top    = c.y + 'px';
+    el.style.width  = el.style.height = (c.r * 2) + 'px';
+    el.style.borderColor = c.color;
+    el.style.background  = c.color + '1a';
+    el.title = c.title;
+    const lbl = document.createElement('span');
+    lbl.className = 'cm-label';
+    lbl.textContent = c.title;
+    el.appendChild(lbl);
+    layer.appendChild(el);
+  });
+}
+
+// Random point inside a circle, kept away from its border
+function randPointInCircle(c) {
+  const maxR = Math.max(6, c.r - 14);
+  const ang  = Math.random() * Math.PI * 2;
+  const dist = Math.random() * maxR;
+  return { x: c.x + Math.cos(ang) * dist, y: c.y + Math.sin(ang) * dist };
+}
+
+// Most recent activity (by timestamp) that matches a circle's path wins
+function findCircleForActs(acts) {
+  if (!circles.length || !acts || !acts.length) return null;
+  for (let i = acts.length - 1; i >= 0; i--) {
+    const p = acts[i].path;
+    if (!p) continue;
+    const c = circles.find(c => p.includes(c.path));
+    if (c) return c;
+  }
+  return null;
+}
+
+// Assign/clear a user's station circle, retargeting them immediately on change
+function setUserCircle(u, circle) {
+  const newKey = circle ? circle.path : null;
+  if (newKey === (u.circleKey || null)) { u.circle = circle; return; }
+  u.circle = circle;
+  u.circleKey = newKey;
+  u.pausing = false;
+  const t = circle ? randPointInCircle(circle) : randTarget(u.email);
+  u.tx = t.x; u.ty = t.y;
+}
+
 // ── User state ─────────────────────────────────────────────
 const users = new Map();   // email → userObj
 let lastTs = 0, lastSpr = 0;
@@ -1115,6 +1360,7 @@ function makeUser(email, expiry) {
     actQueue:    [],   // pending {key, path} items waiting to be revealed
     actTimer:    null, // interval handle for sequential reveal
     renderedActs: {},  // key → DOM line element (already in bubble)
+    acts: [], circle: null, circleKey: null,  // station-circle assignment
     fading: false, fadeTimer: null,
   };
 }
@@ -1229,7 +1475,8 @@ function moveUser(u, dt) {
     u.pausing  = true;
     u.pauseEnd = now + 3000 + Math.random() * 7000;
     u.moving   = false;
-    const t = randTarget(u.email); u.tx = t.x; u.ty = t.y;
+    const t = u.circle ? randPointInCircle(u.circle) : randTarget(u.email);
+    u.tx = t.x; u.ty = t.y;
     return;
   }
 
@@ -1321,10 +1568,14 @@ async function fetchUsers() {
       const u = users.get(email);
       if (u.fading) reviveUser(u, expiry); else u.expiry = expiry;
       if (acts.length) updateActivities(u, acts);
+      u.acts = acts;
+      setUserCircle(u, findCircleForActs(acts));
     } else {
       const u = makeUser(email, expiry);
       users.set(email, u);
       if (acts.length) updateActivities(u, acts);
+      u.acts = acts;
+      setUserCircle(u, findCircleForActs(acts));
       changed = true;
     }
   }
@@ -1356,11 +1607,171 @@ async function fetchTrx() {
   drawTypeChart(lastTotalByType);
 }
 
+// ── Conciliator ────────────────────────────────────────────
+let lastConcilData = null;
+
+// Work out per-type status: 'yellow' if actively running in the current
+// run, 'green' if no pending items, otherwise 'red'.
+function concilTypeStatus(data, key) {
+  const t = data.types?.[key];
+  if (!t) return 'green';
+  if (isConcilTypeRunning(data, key)) return 'yellow';
+  return (t.pending_count || 0) === 0 ? 'green' : 'red';
+}
+
+// A run processes types sequentially in `last_priority_order`. While a run
+// is in progress, the "currently running" type is the first one (in that
+// order) whose last finish is older than the current run's start.
+function isConcilTypeRunning(data, key) {
+  if (!data.current_run_id) return false;
+  const order = data.last_priority_order || Object.keys(data.types || {});
+  const startedAt = data.current_run_started_at ? new Date(data.current_run_started_at).getTime() : 0;
+  for (const k of order) {
+    const t = data.types?.[k];
+    if (!t) continue;
+    const finishedAt = t.last_run_finished_at ? new Date(t.last_run_finished_at).getTime() : 0;
+    if (finishedAt < startedAt) return k === key;
+  }
+  return false;
+}
+
+function drawConcilSquares(data) {
+  const box = document.getElementById('concil-squares');
+  if (!box) return;
+  box.innerHTML = '';
+  const types = Object.keys(data?.types || {});
+  if (!types.length) {
+    box.innerHTML = '<span class="concil-empty">No data</span>';
+    return;
+  }
+  types.forEach(key => {
+    const st = concilTypeStatus(data, key);
+    const t  = data.types[key];
+    const sq = document.createElement('div');
+    sq.className = `concil-sq st-${st}`;
+    sq.title = `${key}: ${st === 'yellow' ? 'running' : (t.pending_count || 0) + ' pending'}`;
+    box.appendChild(sq);
+  });
+}
+
+function fmtAgo(iso) {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return new Date(iso).toLocaleString();
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function fmtDur(sec) {
+  if (sec == null) return '—';
+  if (sec < 60) return `${sec.toFixed(1)}s`;
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}m ${s}s`;
+}
+
+async function fetchConcil() {
+  if (!cfg.concilUrl) { lastConcilData = null; drawConcilSquares(null); return; }
+  const data = await apiFetch(cfg.concilUrl);
+  lastConcilData = data;
+  drawConcilSquares(data);
+}
+
+function openConcilModal() {
+  const data   = lastConcilData;
+  const detail = $('concil-detail');
+  detail.innerHTML = '';
+
+  if (!data) {
+    detail.innerHTML = '<div style="font-size:8px;color:var(--dim);text-align:center;padding:20px 0">No data</div>';
+    $('concil-overlay').classList.add('open');
+    return;
+  }
+
+  const runSection = document.createElement('div'); runSection.className = 'cc-section';
+  const runTitle = document.createElement('div'); runTitle.className = 'cc-section-title'; runTitle.textContent = 'Run Status';
+  runSection.appendChild(runTitle);
+  const runRows = data.current_run_id
+    ? [
+        ['Current Run', data.current_run_id],
+        ['Started', fmtAgo(data.current_run_started_at)],
+      ]
+    : [['Current Run', 'idle']];
+  runRows.push(
+    ['Last Run', data.last_run_id || '—'],
+    ['Last Started', fmtAgo(data.last_run_started_at)],
+    ['Last Finished', fmtAgo(data.last_run_finished_at)],
+    ['Last Duration', fmtDur(data.last_run_duration_seconds)],
+  );
+  if ((data.last_run_deferred || []).length)
+    runRows.push(['Deferred', data.last_run_deferred.join(', ')]);
+  runRows.forEach(([k, v]) => {
+    const row = document.createElement('div'); row.className = 'cc-kv';
+    row.innerHTML = `<span class="k">${k}</span><span class="v"></span>`;
+    row.querySelector('.v').textContent = v;
+    runSection.appendChild(row);
+  });
+  detail.appendChild(runSection);
+
+  const typesSection = document.createElement('div'); typesSection.className = 'cc-section';
+  const typesTitle = document.createElement('div'); typesTitle.className = 'cc-section-title'; typesTitle.textContent = 'Types';
+  typesSection.appendChild(typesTitle);
+
+  const order = data.last_priority_order || Object.keys(data.types || {});
+  order.forEach(key => {
+    const t = data.types?.[key];
+    if (!t) return;
+    const st = concilTypeStatus(data, key);
+    const color = st === 'green' ? '#22c55e' : st === 'yellow' ? '#eab308' : '#ef4444';
+    const summaryTotal = data.last_run_summary?.[key]?.total;
+
+    const row = document.createElement('div'); row.className = 'cc-type-row';
+    const head = document.createElement('div'); head.className = 'cc-type-head';
+    head.innerHTML = `<span class="cc-dot" style="background:${color}"></span><span class="cc-type-name"></span>`;
+    head.querySelector('.cc-type-name').textContent = key;
+    row.appendChild(head);
+
+    const body = document.createElement('div'); body.className = 'cc-type-body';
+    const fields = [
+      ['Pending', t.pending_count ?? '—'],
+      ['Last Total', t.last_run_total ?? summaryTotal ?? '—'],
+      ['Last Run', fmtAgo(t.last_run_at)],
+      ['Last Success', fmtAgo(t.last_success_at)],
+      ['Pending Checked', fmtAgo(t.pending_checked_at)],
+      ['Consecutive Errors', t.consecutive_errors ?? 0],
+    ];
+    fields.forEach(([k, v]) => {
+      const kEl = document.createElement('span'); kEl.className = 'k'; kEl.textContent = k;
+      const vEl = document.createElement('span'); vEl.className = 'v'; vEl.textContent = v;
+      if (k === 'Consecutive Errors' && v > 0) vEl.classList.add('cc-err');
+      body.append(kEl, vEl);
+    });
+    row.appendChild(body);
+
+    if (t.last_run_error || t.pending_check_error) {
+      const errEl = document.createElement('div'); errEl.className = 'cc-err';
+      errEl.style.fontSize = '7px';
+      errEl.textContent = t.last_run_error || t.pending_check_error;
+      row.appendChild(errEl);
+    }
+
+    typesSection.appendChild(row);
+  });
+  detail.appendChild(typesSection);
+
+  $('concil-overlay').classList.add('open');
+}
+function closeConcilModal() { $('concil-overlay').classList.remove('open'); }
+
 async function fetchAll() {
   const upd = document.getElementById('upd');
   upd.textContent = 'Fetching...';
   try {
-    await Promise.all([fetchUsers(), fetchTrx()]);
+    await Promise.all([fetchUsers(), fetchTrx(), fetchConcil()]);
     upd.textContent = 'Updated\n' + new Date().toLocaleTimeString();
   } catch (e) {
     upd.textContent = 'Fetch error';
@@ -1391,8 +1802,10 @@ const $ = id => document.getElementById(id);
 function openModal() {
   $('cfg-users').value  = cfg.usersUrl;
   $('cfg-trx').value    = cfg.trxUrl;
+  $('cfg-concil').value = cfg.concilUrl;
   $('cfg-hname').value  = cfg.hName;
   $('cfg-token').value  = cfg.token;
+  $('cfg-circles').value = (cfg.circles || []).map(c => `${c.path}:${c.title}`).join('\n');
   $('cfg-dark').checked      = cfg.dark !== false;
   $('cfg-shownp').checked    = cfg.showNp !== false;
   $('cfg-showbubble').checked = cfg.showBubble !== false;
@@ -1506,6 +1919,10 @@ $('stat-chart').addEventListener('click', openChartModal);
 $('chart-modal-close').addEventListener('click', closeChartModal);
 $('chart-overlay').addEventListener('click', e => { if (e.target === $('chart-overlay')) closeChartModal(); });
 
+$('stat-concil').addEventListener('click', openConcilModal);
+$('concil-modal-close').addEventListener('click', closeConcilModal);
+$('concil-overlay').addEventListener('click', e => { if (e.target === $('concil-overlay')) closeConcilModal(); });
+
 $('cfg-dark').addEventListener('change', e => { setTheme(e.target.checked); drawTypeChart(lastTotalByType); });
 $('cfg-shownp').addEventListener('change',     e => applyNpVisibility(e.target.checked));
 $('cfg-showbubble').addEventListener('change', e => applyBubbleVisibility(e.target.checked));
@@ -1514,6 +1931,8 @@ $('btn-save').addEventListener('click', () => {
   saveCfg({
     usersUrl: $('cfg-users').value.trim(),
     trxUrl:   $('cfg-trx').value.trim(),
+    concilUrl: $('cfg-concil').value.trim(),
+    circles:  parseCircles($('cfg-circles').value),
     hName:    $('cfg-hname').value.trim() || 'Authorization',
     token:    $('cfg-token').value.trim(),
     dark:       $('cfg-dark').checked,
@@ -1523,6 +1942,8 @@ $('btn-save').addEventListener('click', () => {
   setTheme(cfg.dark);
   applyNpVisibility(cfg.showNp);
   applyBubbleVisibility(cfg.showBubble);
+  layoutCircles();
+  users.forEach(u => setUserCircle(u, findCircleForActs(u.acts)));
   closeModal();
   clearInterval(pollTimer);
   fetchAll();
@@ -1544,7 +1965,10 @@ $('btn-clear').addEventListener('click', () => {
   $('s-in').textContent  = '↓ 0';
   lastTotalByType = {};
   drawTypeChart({});
+  lastConcilData = null;
+  drawConcilSquares(null);
   $('upd').textContent = '—';
+  layoutCircles();
 
   setTheme(true);
   applyNpVisibility(true);
@@ -1552,13 +1976,25 @@ $('btn-clear').addEventListener('click', () => {
   $('cfg-dark').checked        = true;
   $('cfg-shownp').checked      = true;
   $('cfg-showbubble').checked  = true;
+  $('cfg-circles').value       = '';
   syncEmptyState();
+});
+
+window.addEventListener('resize', () => {
+  layoutCircles();
+  users.forEach(u => {
+    if (!u.circleKey) return;
+    const c = circles.find(c => c.path === u.circleKey);
+    u.circle = c || null;
+    if (c) { const p = randPointInCircle(c); u.tx = p.x; u.ty = p.y; }
+  });
 });
 
 // ── Boot ───────────────────────────────────────────────────
 setTheme(cfg.dark !== false);
 applyNpVisibility(cfg.showNp !== false);
 applyBubbleVisibility(cfg.showBubble !== false);
+layoutCircles();
 syncEmptyState();
 
 // Title from URL hash: livelobby.github.io/#MyTitle → "MyTitle LOBBY"
