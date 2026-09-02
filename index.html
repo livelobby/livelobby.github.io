@@ -352,8 +352,10 @@ body {
   border-radius: 50%;
   border: 2px dashed var(--dim);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   text-align: center;
   padding: 6px;
   transition: width 0.6s ease, height 0.6s ease;
@@ -365,6 +367,11 @@ body {
   word-break: break-word;
   max-width: 90%;
   opacity: 0.85;
+}
+.cm-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text);
 }
 
 /* ── CHARACTERS ──────────────────────────────────────────── */
@@ -1170,9 +1177,19 @@ function lobbySize() {
   return { w: l.clientWidth, h: l.clientHeight };
 }
 
+// Only a person assigned to a circle may have a waypoint land inside it
+function pointInsideAnyCircle(x, y, marginPad = 24) {
+  return circles.some(c => Math.hypot(x - c.x, y - c.y) < c.r + marginPad);
+}
+
 function randCandidate() {
   const { w, h } = lobbySize();
   const mx = 70, my = 90;  // small fixed margin so chars roam the full screen
+  for (let i = 0; i < 20; i++) {
+    const x = mx + Math.random() * (w - mx * 2);
+    const y = my + Math.random() * (h - my * 2);
+    if (!pointInsideAnyCircle(x, y)) return { x, y };
+  }
   return { x: mx + Math.random() * (w - mx * 2), y: my + Math.random() * (h - my * 2) };
 }
 
@@ -1256,8 +1273,9 @@ function updateCircleSizes() {
   users.forEach(u => { if (u.circleKey) counts[u.circleKey] = (counts[u.circleKey] || 0) + 1; });
   circles.forEach(c => {
     const n = counts[c.path] || 0;
-    c.r = Math.min(c.maxR, c.baseR + n * CIRCLE_GROWTH_PER_USER);
+    c.count    = n;
     c.occupied = n > 0;
+    c.r = n > 0 ? Math.min(c.maxR, c.baseR + n * CIRCLE_GROWTH_PER_USER) : c.baseR * 0.5;
   });
   renderCircles();
 
@@ -1286,11 +1304,17 @@ function renderCircles() {
     const color = c.occupied ? c.color : '#6b7280';
     el.style.borderColor = color;
     el.style.background  = color + '1a';
-    el.title = c.title;
+    el.title = c.occupied ? `${c.title} (${c.count})` : c.title;
     const lbl = document.createElement('span');
     lbl.className = 'cm-label';
     lbl.textContent = c.title;
     el.appendChild(lbl);
+    if (c.occupied) {
+      const cnt = document.createElement('span');
+      cnt.className = 'cm-count';
+      cnt.textContent = c.count;
+      el.appendChild(cnt);
+    }
     layer.appendChild(el);
   });
 }
@@ -1518,11 +1542,28 @@ function moveUser(u, dt) {
   }
 
   const nx = dx / dist, ny = dy / dist;
-  u.vx = nx; u.vy = ny;
+
+  // Steer around any circle the person isn't allowed to enter
+  let fx = nx, fy = ny;
+  for (const c of circles) {
+    if (u.circleKey && c.path === u.circleKey) continue;
+    const cx = u.x - c.x, cy = u.y - c.y;
+    const cd = Math.hypot(cx, cy) || 0.001;
+    const pushR = c.r + 24;
+    if (cd < pushR) {
+      const strength = (pushR - cd) / pushR;
+      fx += (cx / cd) * strength * 2.5;
+      fy += (cy / cd) * strength * 2.5;
+    }
+  }
+  const flen = Math.hypot(fx, fy) || 1;
+  fx /= flen; fy /= flen;
+
+  u.vx = fx; u.vy = fy;
   const step = Math.min(SPEED * dt, dist);
-  u.x += nx * step;
-  u.y += ny * step;
-  u.dir = velToDir(nx, ny);
+  u.x += fx * step;
+  u.y += fy * step;
+  u.dir = velToDir(fx, fy);
   u.el.style.left = Math.round(u.x) + 'px';
   u.el.style.top  = Math.round(u.y) + 'px';
 }
