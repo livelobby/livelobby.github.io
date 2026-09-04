@@ -766,6 +766,7 @@ canvas.spr {
 }
 .fg textarea:focus { border-color: var(--accent); }
 .fg .fg-hint { font-size: 7px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+.fg-actions { margin-top: 8px; }
 
 .tg-row {
   display: flex; align-items: center;
@@ -997,6 +998,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div id="overlay">
   <div id="modal">
     <h2>&#9881; Settings</h2>
+
+    <div class="fg">
+      <label>Load Config from JSON</label>
+      <textarea id="cfg-json-input" placeholder='{"usersUrl": "...", "trxUrl": "...", ...}'></textarea>
+      <div class="fg-actions">
+        <button class="btn btn-sec" id="btn-load-json" type="button">Load from JSON</button>
+      </div>
+      <div class="fg-hint">Paste a full config JSON and click "Load from JSON" — it fills in the fields below. Nothing is saved until you click "Save &amp; Apply".</div>
+    </div>
 
     <div class="fg">
       <label>Users Endpoint URL</label>
@@ -2021,17 +2031,26 @@ function syncEmptyState() {
 // ── Settings modal ─────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
+// Fills the settings form fields from a config object (defaults for any
+// missing key). Used both to open the modal with the saved config and to
+// preview a pasted JSON config before it's saved.
+function fillConfigForm(c) {
+  const merged = Object.assign(DEF(), c);
+  $('cfg-users').value  = merged.usersUrl;
+  $('cfg-trx').value    = merged.trxUrl;
+  $('cfg-concil').value = merged.concilUrl;
+  $('cfg-status-report').value = merged.statusReportUrl;
+  $('cfg-hname').value  = merged.hName;
+  $('cfg-token').value  = merged.token;
+  $('cfg-circles').value = (merged.circles || []).map(c => `${c.path}:${c.title}`).join('\n');
+  $('cfg-dark').checked      = merged.dark !== false;
+  $('cfg-shownp').checked    = merged.showNp !== false;
+  $('cfg-showbubble').checked = merged.showBubble !== false;
+}
+
 function openModal() {
-  $('cfg-users').value  = cfg.usersUrl;
-  $('cfg-trx').value    = cfg.trxUrl;
-  $('cfg-concil').value = cfg.concilUrl;
-  $('cfg-status-report').value = cfg.statusReportUrl;
-  $('cfg-hname').value  = cfg.hName;
-  $('cfg-token').value  = cfg.token;
-  $('cfg-circles').value = (cfg.circles || []).map(c => `${c.path}:${c.title}`).join('\n');
-  $('cfg-dark').checked      = cfg.dark !== false;
-  $('cfg-shownp').checked    = cfg.showNp !== false;
-  $('cfg-showbubble').checked = cfg.showBubble !== false;
+  fillConfigForm(cfg);
+  $('cfg-json-input').value = '';
   $('overlay').classList.add('open');
 }
 function closeModal() { $('overlay').classList.remove('open'); }
@@ -2151,6 +2170,16 @@ document.querySelector('.c-cncl').addEventListener('click', () => openStatusModa
 document.querySelector('.c-pend').addEventListener('click', () => openStatusModal('pending'));
 $('status-modal-close').addEventListener('click', closeStatusModal);
 $('status-overlay').addEventListener('click', e => { if (e.target === $('status-overlay')) closeStatusModal(); });
+
+$('btn-load-json').addEventListener('click', () => {
+  const raw = $('cfg-json-input').value.trim();
+  if (!raw) return;
+  let json;
+  try { json = JSON.parse(raw); }
+  catch (e) { alert('Invalid JSON: ' + e.message); return; }
+  fillConfigForm(json);
+  alert('Config loaded into the form below. Click "Save & Apply" to confirm.');
+});
 
 $('cfg-dark').addEventListener('change', e => { setTheme(e.target.checked); drawTypeChart(lastTotalByType); });
 $('cfg-shownp').addEventListener('change',     e => applyNpVisibility(e.target.checked));
