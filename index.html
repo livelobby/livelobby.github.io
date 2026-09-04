@@ -594,6 +594,23 @@ canvas.spr {
   display: block;
 }
 
+.spr-wrap { position: relative; }
+
+/* Crown shown above users whose activity list includes /auth/login-monitor */
+.crown {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  line-height: 1;
+  display: none;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+  z-index: 3;
+}
+.crown.show { display: block; }
+
 /* ── EMPTY STATE ─────────────────────────────────────────── */
 #empty {
   position: absolute; inset: 0;
@@ -1403,6 +1420,14 @@ function findCircleForActs(acts) {
   return null;
 }
 
+// Crown badge: shown for users whose activity list includes /auth/login-monitor
+function hasLoginMonitorAct(acts) {
+  return !!acts && acts.some(a => a.path && a.path.includes('/auth/login-monitor'));
+}
+function setUserCrown(u, has) {
+  u.crown.classList.toggle('show', has);
+}
+
 // Assign/clear a user's station circle, retargeting them immediately on change
 function setUserCircle(u, circle) {
   const newKey = circle ? circle.path : null;
@@ -1461,7 +1486,11 @@ function makeUser(email, expiry) {
   cvs.width  = Math.round(FW * sc);
   cvs.height = Math.round(FH * sc);
 
-  el.append(bWrap, np, cvs);
+  const crown = document.createElement('div'); crown.className = 'crown'; crown.textContent = '\u{1F451}';
+  const sprWrap = document.createElement('div'); sprWrap.className = 'spr-wrap';
+  sprWrap.append(cvs, crown);
+
+  el.append(bWrap, np, sprWrap);
   el.style.left = Math.round(x) + 'px';
   el.style.top  = Math.round(y) + 'px';
   document.getElementById('lobby').appendChild(el);
@@ -1479,7 +1508,7 @@ function makeUser(email, expiry) {
     email, expiry, x, y, tx: tgt.x, ty: tgt.y,
     vx: 0, vy: 0, dir: 'SOUTH', frame: 0,
     moving: false, pausing: false, pauseEnd: 0,
-    sc, char, sprs, el, cvs,
+    sc, char, sprs, el, cvs, crown,
     ctx: cvs.getContext('2d'),
     cdEl, bubble,
     actQueue:    [],   // pending {key, path} items waiting to be revealed
@@ -1729,12 +1758,14 @@ async function fetchUsers() {
       if (acts.length) updateActivities(u, acts);
       u.acts = acts;
       setUserCircle(u, findCircleForActs(acts));
+      setUserCrown(u, hasLoginMonitorAct(acts));
     } else {
       const u = makeUser(email, expiry);
       users.set(email, u);
       if (acts.length) updateActivities(u, acts);
       u.acts = acts;
       setUserCircle(u, findCircleForActs(acts));
+      setUserCrown(u, hasLoginMonitorAct(acts));
       changed = true;
     }
   }
