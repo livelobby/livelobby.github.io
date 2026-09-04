@@ -143,6 +143,9 @@ body {
 .c-out   .stat-val  { color: #ef4444; }
 .c-in    .stat-val  { color: #22c55e; }
 
+.c-done, .c-cncl, .c-pend { cursor: pointer; }
+.c-done:hover, .c-cncl:hover, .c-pend:hover { background: var(--btn-hov); }
+
 /* ── TYPE CHART WIDGET ───────────────────────────────────── */
 #stat-chart { cursor: pointer; padding-bottom: 7px; }
 #stat-chart:hover { background: var(--btn-hov); }
@@ -304,6 +307,37 @@ body {
 .ct-track { width: 64px; height: 7px; background: var(--sb-border); border-radius: 1px; overflow: hidden; flex-shrink: 0; image-rendering: pixelated; }
 .ct-bar { height: 100%; border-radius: 1px; }
 .ct-val { flex-shrink: 0; min-width: 18px; text-align: right; }
+
+/* Status report modal */
+#status-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 360px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#status-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#status-detail { overflow-y: auto; flex: 1; padding: 14px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#status-modal-footer { display: flex; gap: 8px; margin: 10px 14px 14px; flex-shrink: 0; }
+
+#status-pie-cvs { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+#status-legend { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.sl-row { display: flex; align-items: center; gap: 8px; font-size: 8px; }
+.sl-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.sl-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-transform: uppercase; }
+.sl-val { flex-shrink: 0; color: var(--dim); }
+.sl-empty { font-size: 8px; color: var(--dim); text-align: center; padding: 10px 0; }
 
 #upd {
   font-size: 10px;
@@ -660,7 +694,7 @@ canvas.spr {
 }
 
 /* ── OVERLAY / MODAL ─────────────────────────────────────── */
-#overlay, #users-overlay, #chart-overlay, #concil-overlay {
+#overlay, #users-overlay, #chart-overlay, #concil-overlay, #status-overlay {
   position: fixed; inset: 0;
   background: var(--overlay);
   z-index: 200;
@@ -669,7 +703,7 @@ canvas.spr {
   justify-content: center;
   backdrop-filter: blur(6px);
 }
-#overlay.open, #users-overlay.open, #chart-overlay.open, #concil-overlay.open { display: flex; }
+#overlay.open, #users-overlay.open, #chart-overlay.open, #concil-overlay.open, #status-overlay.open { display: flex; }
 
 #modal {
   background: var(--modal-bg);
@@ -945,6 +979,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
+<!-- STATUS REPORT MODAL -->
+<div id="status-overlay">
+  <div id="status-modal">
+    <h2 id="status-modal-title">&#9636; Status Report</h2>
+    <div id="status-detail">
+      <canvas id="status-pie-cvs" width="180" height="180"></canvas>
+      <div id="status-legend"></div>
+    </div>
+    <div id="status-modal-footer">
+      <button class="btn btn-sec" id="status-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div id="overlay">
   <div id="modal">
@@ -963,6 +1011,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="fg">
       <label>Conciliator Endpoint URL</label>
       <input type="url" id="cfg-concil" placeholder="https://api.example.com/conciliator/status">
+    </div>
+
+    <div class="fg">
+      <label>Status Report Endpoint URL</label>
+      <input type="url" id="cfg-status-report" placeholder="https://api.example.com/report?date={current_day}&status={status_type}">
+      <div class="fg-hint">Use <code>{current_day}</code> and <code>{status_type}</code> as placeholders — they're filled in automatically (e.g. current_day becomes 2026-09-04, status_type becomes done/canceled/pending).</div>
     </div>
 
     <div class="fg">
@@ -1050,7 +1104,7 @@ const STAND_IDX = {
 };
 
 // ── Config / storage ───────────────────────────────────────
-const DEF = () => ({ usersUrl:'', trxUrl:'', concilUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true, hiddenTypes:[], circles:[] });
+const DEF = () => ({ usersUrl:'', trxUrl:'', concilUrl:'', statusReportUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true, hiddenTypes:[], circles:[] });
 
 function loadCfg() {
   try { return Object.assign(DEF(), JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
@@ -1610,11 +1664,28 @@ function renderLoop(ts) {
   requestAnimationFrame(renderLoop);
 }
 
+// ── URL templating ─────────────────────────────────────────
+// Resolves {placeholder} tokens in a configured endpoint URL, e.g.
+// {current_day} → today's date as YYYY-MM-DD. Available to every
+// configured endpoint, not just the status report one.
+function todayStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function resolveUrlTemplate(url, vars) {
+  if (!url) return url;
+  return url.replace(/\{(\w+)\}/g, (m, key) => (key in vars ? vars[key] : m));
+}
+
 // ── API ────────────────────────────────────────────────────
-async function apiFetch(url) {
+async function apiFetch(url, extraVars) {
   const h = {};
   if (cfg.hName && cfg.token) h[cfg.hName] = cfg.token;
-  return (await fetch(url, { headers: h })).json();
+  const resolved = resolveUrlTemplate(url, { current_day: todayStr(), ...extraVars });
+  return (await fetch(resolved, { headers: h })).json();
 }
 
 async function fetchUsers() {
@@ -1846,6 +1917,78 @@ function openConcilModal() {
 }
 function closeConcilModal() { $('concil-overlay').classList.remove('open'); }
 
+// ── Status report (pie chart) ───────────────────────────────
+const STATUS_LABELS = { done: 'Done', canceled: 'Canceled', pending: 'Pending' };
+
+function drawStatusPie(entries) {
+  const cvs = $('status-pie-cvs');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const dark = document.documentElement.dataset.theme !== 'light';
+  ctx.fillStyle = dark ? '#060d1a' : '#d5d9ed';
+  ctx.beginPath();
+  ctx.arc(W / 2, H / 2, W / 2 - 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  if (!total) return;
+
+  const cx = W / 2, cy = H / 2, r = W / 2 - 2;
+  let start = -Math.PI / 2;
+  entries.forEach(([key, val]) => {
+    if (!val) return;
+    const slice = (val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + slice);
+    ctx.closePath();
+    ctx.fillStyle = typeColor(key);
+    ctx.fill();
+    start += slice;
+  });
+}
+
+function renderStatusLegend(entries) {
+  const box = $('status-legend');
+  box.innerHTML = '';
+  if (!entries.length) {
+    box.innerHTML = '<div class="sl-empty">No data</div>';
+    return;
+  }
+  entries.forEach(([key, val]) => {
+    const row = document.createElement('div'); row.className = 'sl-row';
+    row.innerHTML = `<span class="sl-dot" style="background:${typeColor(key)}"></span><span class="sl-lbl"></span><span class="sl-val"></span>`;
+    row.querySelector('.sl-lbl').textContent = key;
+    row.querySelector('.sl-val').textContent = val.toLocaleString();
+    box.appendChild(row);
+  });
+}
+
+async function openStatusModal(statusType) {
+  $('status-modal-title').textContent = `▶ ${STATUS_LABELS[statusType] || statusType} Report`;
+  $('status-legend').innerHTML = '<div class="sl-empty">Loading…</div>';
+  drawStatusPie([]);
+  $('status-overlay').classList.add('open');
+
+  if (!cfg.statusReportUrl) {
+    $('status-legend').innerHTML = '<div class="sl-empty">No Status Report URL configured</div>';
+    return;
+  }
+
+  try {
+    const json = await apiFetch(cfg.statusReportUrl, { status_type: statusType });
+    const entries = Object.entries(json.total_by_type || {});
+    drawStatusPie(entries);
+    renderStatusLegend(entries);
+  } catch (e) {
+    $('status-legend').innerHTML = '<div class="sl-empty">Fetch error</div>';
+    console.error('[LiveLobby]', e);
+  }
+}
+function closeStatusModal() { $('status-overlay').classList.remove('open'); }
+
 async function fetchAll() {
   const upd = document.getElementById('upd');
   upd.textContent = 'Fetching...';
@@ -1882,6 +2025,7 @@ function openModal() {
   $('cfg-users').value  = cfg.usersUrl;
   $('cfg-trx').value    = cfg.trxUrl;
   $('cfg-concil').value = cfg.concilUrl;
+  $('cfg-status-report').value = cfg.statusReportUrl;
   $('cfg-hname').value  = cfg.hName;
   $('cfg-token').value  = cfg.token;
   $('cfg-circles').value = (cfg.circles || []).map(c => `${c.path}:${c.title}`).join('\n');
@@ -2002,6 +2146,12 @@ $('stat-concil').addEventListener('click', openConcilModal);
 $('concil-modal-close').addEventListener('click', closeConcilModal);
 $('concil-overlay').addEventListener('click', e => { if (e.target === $('concil-overlay')) closeConcilModal(); });
 
+document.querySelector('.c-done').addEventListener('click', () => openStatusModal('done'));
+document.querySelector('.c-cncl').addEventListener('click', () => openStatusModal('canceled'));
+document.querySelector('.c-pend').addEventListener('click', () => openStatusModal('pending'));
+$('status-modal-close').addEventListener('click', closeStatusModal);
+$('status-overlay').addEventListener('click', e => { if (e.target === $('status-overlay')) closeStatusModal(); });
+
 $('cfg-dark').addEventListener('change', e => { setTheme(e.target.checked); drawTypeChart(lastTotalByType); });
 $('cfg-shownp').addEventListener('change',     e => applyNpVisibility(e.target.checked));
 $('cfg-showbubble').addEventListener('change', e => applyBubbleVisibility(e.target.checked));
@@ -2011,6 +2161,7 @@ $('btn-save').addEventListener('click', () => {
     usersUrl: $('cfg-users').value.trim(),
     trxUrl:   $('cfg-trx').value.trim(),
     concilUrl: $('cfg-concil').value.trim(),
+    statusReportUrl: $('cfg-status-report').value.trim(),
     circles:  parseCircles($('cfg-circles').value),
     hName:    $('cfg-hname').value.trim() || 'Authorization',
     token:    $('cfg-token').value.trim(),
