@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Lobby</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-TN9C354C');</script>
+<!-- End Google Tag Manager -->
+<style>
+:root { --sbw: 210px; }
+
+/* ── THEMES ─────────────────────────────────────────────── */
+html[data-theme="dark"] {
+  --bg:         #0d1117;
+  --floor:      #111827;
+  --grid:       #161d2b;
+  --sb-bg:      #161b27;
+  --sb-border:  #21293d;
+  --card-bg:    #0d1117;
+  --text:       #cdd9f5;
+  --dim:        #4a5878;
+  --accent:     #3b82f6;
+  --shadow:     rgba(0,0,0,0.65);
+  --overlay:    rgba(0,5,20,0.82);
+  --modal-bg:   #161b27;
+  --input-bg:   #0d1117;
+  --input-bd:   #21293d;
+  --btn-bg:     #21293d;
+  --btn-hov:    #2a3550;
+  --np-bg:      rgba(4,8,22,0.84);
+  --np-text:    #e2e8f5;
+  --np-border:  rgba(80,110,200,0.25);
+  --scan:       rgba(0,0,0,0.028);
+}
+
+html[data-theme="light"] {
+  --bg:         #eef0fa;
+  --floor:      #e2e6f5;
+  --grid:       #d5d9ed;
+  --sb-bg:      #f5f7ff;
+  --sb-border:  #c4cadf;
+  --card-bg:    #ffffff;
+  --text:       #1a2040;
+  --dim:        #7880a0;
+  --accent:     #2563eb;
+  --shadow:     rgba(20,30,80,0.14);
+  --overlay:    rgba(190,200,230,0.84);
+  --modal-bg:   #f5f7ff;
+  --input-bg:   #ffffff;
+  --input-bd:   #c4cadf;
+  --btn-bg:     #dde2f2;
+  --btn-hov:    #cdd3e8;
+  --np-bg:      rgba(235,238,255,0.9);
+  --np-text:    #1a2040;
+  --np-border:  rgba(80,100,180,0.2);
+  --scan:       rgba(0,0,0,0.012);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  font-family: 'Press Start 2P', monospace;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+#sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: var(--sbw);
+  height: 100vh;
+  background: var(--sb-bg);
+  border-right: 2px solid var(--sb-border);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px 12px;
+  gap: 9px;
+  z-index: 50;
+  box-shadow: 3px 0 18px var(--shadow);
+}
+
+#sb-title {
+  font-size: 8px;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 2px;
+  line-height: 1.7;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--sb-border);
+}
+
+.stat {
+  background: var(--card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 4px;
+  padding: 9px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-lbl {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-val { font-size: 18px; line-height: 1.1; }
+
+.stat-track {
+  height: 3px;
+  background: var(--sb-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.7s ease;
+}
+
+.c-users .stat-val  { color: var(--accent); }
+.c-done  .stat-val  { color: #22c55e; }
+.c-done  .stat-fill { background: #22c55e; }
+.c-cncl  .stat-val  { color: #eab308; }
+.c-cncl  .stat-fill { background: #eab308; }
+.c-pend  .stat-val  { color: #ef4444; }
+.c-pend  .stat-fill { background: #ef4444; }
+.c-out   .stat-val  { color: #ef4444; }
+.c-in    .stat-val  { color: #22c55e; }
+
+.c-done, .c-cncl, .c-pend { cursor: pointer; }
+.c-done:hover, .c-cncl:hover, .c-pend:hover { background: var(--btn-hov); }
+
+/* ── TYPE CHART WIDGET ───────────────────────────────────── */
+#stat-chart { cursor: pointer; padding-bottom: 7px; }
+#stat-chart:hover { background: var(--btn-hov); }
+
+/* Per-row hide toggle */
+.ct-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 4px 0 0;
+  color: var(--accent);
+  flex-shrink: 0;
+  font-family: 'Press Start 2P', monospace;
+  line-height: 1;
+}
+.ct-toggle:hover { filter: brightness(1.3); }
+
+/* Hidden-type badges below the list */
+#chart-hidden-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px 6px;
+  border-top: 1px solid var(--sb-border);
+}
+#chart-hidden-badges:empty { display: none; }
+
+.ct-badge {
+  background: var(--sb-border);
+  border: 1px solid var(--input-bd);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 6px;
+  font-family: 'Press Start 2P', monospace;
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.ct-badge:hover { background: var(--btn-hov); color: var(--text); }
+
+#chart-cvs {
+  display: block;
+  width: 100%;
+  height: 32px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 2px;
+  margin-top: 5px;
+}
+
+/* ── CONCILIATOR WIDGET ──────────────────────────────────── */
+#stat-concil { cursor: pointer; }
+#stat-concil:hover { background: var(--btn-hov); }
+
+.concil-squares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 3px;
+}
+.concil-sq {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+.concil-sq.st-green  { background: #22c55e; }
+.concil-sq.st-yellow { background: #eab308; animation: blink 1s step-end infinite; }
+.concil-sq.st-red    { background: #ef4444; }
+.concil-empty { font-size: 7px; color: var(--dim); }
+
+/* Conciliator detail modal */
+#concil-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 460px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#concil-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#concil-detail { overflow-y: auto; flex: 1; padding: 12px 16px; }
+#concil-modal-footer { display: flex; gap: 8px; margin: 10px 14px 14px; flex-shrink: 0; }
+
+.cc-section { margin-bottom: 14px; }
+.cc-section-title {
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--sb-border);
+  padding-bottom: 4px;
+}
+.cc-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 8px; padding: 3px 0; }
+.cc-kv .k { color: var(--dim); }
+.cc-kv .v { color: var(--text); text-align: right; word-break: break-all; }
+
+.cc-type-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--sb-border);
+  border-radius: 4px;
+}
+.cc-type-head { display: flex; align-items: center; gap: 8px; }
+.cc-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.cc-type-name { font-size: 9px; color: var(--text); flex: 1; text-transform: uppercase; }
+.cc-type-body { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 7px; }
+.cc-type-body .k { color: var(--dim); }
+.cc-type-body .v { color: var(--text); }
+.cc-err { color: #ef4444; }
+
+/* Chart detail modal */
+#chart-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 400px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#chart-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#chart-detail { overflow-y: auto; flex: 1; padding: 10px 14px; }
+#chart-modal-footer { display: flex; gap: 8px; margin: 10px 14px 14px; flex-shrink: 0; }
+
+.ct-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--sb-border);
+  font-size: 8px;
+}
+.ct-row:last-child { border-bottom: none; }
+.ct-lbl { color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-track { width: 64px; height: 7px; background: var(--sb-border); border-radius: 1px; overflow: hidden; flex-shrink: 0; image-rendering: pixelated; }
+.ct-bar { height: 100%; border-radius: 1px; }
+.ct-val { flex-shrink: 0; min-width: 18px; text-align: right; }
+
+/* Status report modal */
+#status-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 360px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#status-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#status-detail { overflow-y: auto; flex: 1; padding: 14px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#status-modal-footer { display: flex; gap: 8px; margin: 10px 14px 14px; flex-shrink: 0; }
+
+#status-pie-cvs { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+#status-legend { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.sl-row { display: flex; align-items: center; gap: 8px; font-size: 8px; }
+.sl-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.sl-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-transform: uppercase; }
+.sl-val { flex-shrink: 0; color: var(--dim); }
+.sl-empty { font-size: 8px; color: var(--dim); text-align: center; padding: 10px 0; }
+
+#upd {
+  font-size: 10px;
+  color: var(--dim);
+  text-align: center;
+  margin-top: auto;
+  padding-top: 4px;
+  line-height: 1.8;
+}
+
+/* ── LOBBY ───────────────────────────────────────────────── */
+#lobby {
+  position: fixed;
+  left: var(--sbw); top: 0; right: 0; bottom: 0;
+  background-color: var(--floor);
+  background-image:
+    repeating-linear-gradient(0deg,   transparent, transparent 31px, var(--grid) 31px, var(--grid) 32px),
+    repeating-linear-gradient(90deg,  transparent, transparent 31px, var(--grid) 31px, var(--grid) 32px);
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+/* scanline overlay */
+#lobby::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 3px,
+    var(--scan) 3px, var(--scan) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── STATION CIRCLES ─────────────────────────────────────── */
+#circles-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.circle-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px dashed var(--dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 6px;
+  transition: width 0.6s ease, height 0.6s ease;
+}
+.cm-label {
+  font-size: 6px;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+  max-width: 90%;
+  opacity: 0.85;
+}
+.cm-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+/* ── CHARACTERS ──────────────────────────────────────────── */
+.char {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* (x,y) = feet center; element bottom aligns to y */
+  transform: translate(-50%, -100%);
+  opacity: 0;
+  transition: opacity 0.85s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.char.visible { opacity: 1; }
+.char.fade    { opacity: 0; }
+
+/* Enable pointer events on the whole visible character */
+.char.visible { pointer-events: auto; }
+
+/* Show nameplate when tapped/clicked */
+.char.tapped .nameplate { opacity: 1; }
+
+.nameplate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  opacity: 0.4;
+  max-height: 60px;
+  overflow: hidden;
+  transition: opacity 0.25s ease, max-height 0.25s ease,
+              padding 0.25s ease, margin 0.25s ease, border-width 0.25s ease, gap 0.25s ease;
+}
+.nameplate:hover,
+.nameplate:active { opacity: 1; }
+
+/* Nameplates hidden: collapse out of flex flow so bubble sits above the sprite */
+body.hide-np .nameplate {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  gap: 0;
+}
+/* Restore on hover or tap */
+body.hide-np .nameplate:hover,
+body.hide-np .nameplate:active,
+body.hide-np .char.tapped .nameplate {
+  opacity: 1;
+  max-height: 60px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  gap: 3px;
+}
+
+.np-email {
+  font-size: 10px;
+  color: var(--np-text);
+  opacity: 0.9;
+}
+
+.np-cd { font-size: 9px; color: #22c55e; }
+
+/* ── SPEECH BUBBLE ───────────────────────────────────────── */
+.bubble-wrap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, calc(-100% - 6px));  /* above nameplate, relative to .char */
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+}
+.char.visible .bubble-wrap { pointer-events: auto; }
+.char:hover .bubble-wrap,
+.char.tapped .bubble-wrap  { opacity: 1; }
+
+/* Speech bubbles hidden via settings */
+body.hide-bubble .bubble-wrap { opacity: 0; }
+body.hide-bubble .char:hover .bubble-wrap,
+body.hide-bubble .char.tapped .bubble-wrap { opacity: 1; }
+
+.bubble {
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  backdrop-filter: blur(4px);
+  min-width: 80px;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;          /* no gap — spacing handled per-line to avoid phantom height */
+  position: relative;
+}
+
+/* tail pointing down */
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--np-border);
+  border-bottom: none;
+}
+.bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--np-bg);
+  border-bottom: none;
+  z-index: 1;
+}
+
+.bubble-line {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--accent);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 190px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.35s ease, transform 0.35s ease, max-height 0.3s ease, margin-top 0.3s ease;
+}
+
+/* Latest revealed line — always visible */
+.bubble-line.show:last-child {
+  max-height: 20px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Older lines — hidden by default, shown on hover/touch */
+.bubble-line.show:not(:last-child) {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(0);
+}
+
+/* Expand all revealed lines on hover or touch-toggle */
+.char:hover .bubble .bubble-line.show,
+.bubble.expanded .bubble-line.show {
+  max-height: 20px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Spacing between lines only when expanded (avoids phantom height when collapsed) */
+.char:hover .bubble .bubble-line.show + .bubble-line.show,
+.bubble.expanded .bubble-line.show + .bubble-line.show {
+  margin-top: 3px;
+}
+.np-cd.warn { color: #eab308; }
+.np-cd.crit { color: #ef4444; animation: blink 0.8s step-end infinite; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+canvas.spr {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+.spr-wrap { position: relative; }
+
+/* Crown shown above users whose activity list includes /auth/login-monitor */
+.crown {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  line-height: 1;
+  display: none;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+  z-index: 3;
+}
+.crown.show { display: block; }
+
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+#empty {
+  position: absolute; inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  color: var(--dim);
+  pointer-events: none;
+  z-index: 3;
+}
+#empty .et { font-size: 13px; color: var(--dim); opacity: 0.5; }
+#empty .em { font-size: 6px; line-height: 2.2; opacity: 0.7; }
+#empty.hidden { display: none; }
+
+/* ── GEAR BUTTON ─────────────────────────────────────────── */
+#gear {
+  position: fixed;
+  right: 18px; bottom: 18px;
+  width: 44px; height: 44px;
+  background: var(--sb-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  transition: transform 0.4s, background 0.2s;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+#gear:hover { transform: rotate(60deg); background: var(--btn-hov); }
+
+#users-btn {
+  position: fixed;
+  right: 18px; bottom: 72px;
+  width: 44px; height: 44px;
+  background: var(--sb-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+#users-btn:hover { background: var(--btn-hov); transform: scale(1.08); }
+
+/* Users list modal */
+#users-modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 400px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+#users-modal h2 {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+#users-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 10px 14px;
+}
+.ul-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--sb-border);
+  font-size: 10px;
+}
+.ul-row:last-child { border-bottom: none; }
+.ul-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.ul-email { color: var(--text); word-break: break-all; }
+.ul-path  { font-size: 6px; color: var(--accent); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ul-cd { color: #22c55e; flex-shrink: 0; }
+.ul-cd.warn { color: #eab308; }
+.ul-cd.crit { color: #ef4444; }
+.ul-empty { font-size: 7px; color: var(--dim); text-align: center; padding: 20px 0; }
+#users-modal-close {
+  display: block;
+  margin: 10px 14px 14px;
+  flex-shrink: 0;
+}
+
+/* ── OVERLAY / MODAL ─────────────────────────────────────── */
+#overlay, #users-overlay, #chart-overlay, #concil-overlay, #status-overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+#overlay.open, #users-overlay.open, #chart-overlay.open, #concil-overlay.open, #status-overlay.open { display: flex; }
+
+#modal {
+  background: var(--modal-bg);
+  border: 2px solid var(--sb-border);
+  border-radius: 8px;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px;
+  box-shadow: 0 10px 50px var(--shadow);
+}
+
+#modal h2 {
+  font-size: 14px;
+  color: var(--accent);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sb-border);
+  margin-bottom: 18px;
+}
+
+.fg { margin-bottom: 14px; }
+.fg label {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.fg input[type="text"],
+.fg input[type="url"] {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-bd);
+  border-radius: 4px;
+  padding: 9px 10px;
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fg input:focus { border-color: var(--accent); }
+
+.fg textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  background: var(--input-bg);
+  border: 1px solid var(--input-bd);
+  border-radius: 4px;
+  padding: 9px 10px;
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  line-height: 1.6;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fg textarea:focus { border-color: var(--accent); }
+.fg .fg-hint { font-size: 7px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+.fg-actions { margin-top: 8px; }
+
+.tg-row {
+  display: flex; align-items: center;
+  gap: 14px; margin-bottom: 14px;
+}
+.tg-row > span { font-size: 10px; color: var(--text); }
+
+.toggle { position: relative; width: 44px; height: 22px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.tg-sl {
+  position: absolute; inset: 0;
+  background: var(--sb-border);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.tg-sl::before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s;
+}
+.toggle input:checked + .tg-sl { background: var(--accent); }
+.toggle input:checked + .tg-sl::before { transform: translateX(22px); }
+
+.modal-btns {
+  display: flex; gap: 8px;
+  margin-top: 20px; flex-wrap: wrap;
+}
+
+.btn {
+  padding: 10px 14px;
+  border: none; border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  transition: filter 0.15s, transform 0.1s;
+  line-height: 1.4;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; flex: 1; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-sec { background: var(--btn-bg); color: var(--text); }
+.btn-sec:hover { background: var(--btn-hov); }
+.btn-danger { background: #3b0a0a; color: #fca5a5; }
+.btn-danger:hover { background: #7f1d1d; }
+
+/* ── SCROLLBAR ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--sb-border); border-radius: 3px; }
+
+/* ── MOBILE: sidebar goes to the top ─────────────────────── */
+@media (max-width: 600px) {
+  :root { --sbw: 0px; }
+
+  #sidebar {
+    left: 0; top: 0; right: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 2px solid var(--sb-border);
+    box-shadow: 0 3px 18px var(--shadow);
+    overflow-x: auto;
+  }
+
+  #sb-title { display: none; }
+
+  .stat {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    flex-shrink: 0;
+  }
+
+  .stat-lbl { display: none; }
+  .stat-val  { font-size: 13px; }
+  .stat-track { display: none; }
+
+  #upd {
+    margin-top: 0;
+    padding-top: 0;
+    flex-shrink: 0;
+    font-size: 5px;
+    white-space: nowrap;
+  }
+
+  #lobby {
+    left: 0;
+    top: 58px;   /* height of the top bar */
+  }
+
+  #gear {
+    right: 10px;
+    bottom: 10px;
+  }
+  #users-btn {
+    right: 10px;
+    bottom: 64px;
+  }
+}
+</style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TN9C354C"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sb-title">&#9733; LIVE<br>LOBBY &#9733;</div>
+
+  <div class="stat c-users">
+    <div class="stat-lbl">Online Users</div>
+    <div class="stat-val" id="s-users">0</div>
+  </div>
+
+  <div class="stat c-done">
+    <div class="stat-lbl">TRX Done</div>
+    <div class="stat-val" id="s-done">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-done"></div></div>
+  </div>
+
+  <div class="stat c-cncl">
+    <div class="stat-lbl">TRX Canceled</div>
+    <div class="stat-val" id="s-cncl">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-cncl"></div></div>
+  </div>
+
+  <div class="stat c-pend">
+    <div class="stat-lbl">TRX Pending</div>
+    <div class="stat-val" id="s-pend">0</div>
+    <div class="stat-track"><div class="stat-fill" id="b-pend"></div></div>
+  </div>
+
+  <div class="stat c-out">
+    <div class="stat-lbl">Total Out</div>
+    <div class="stat-val" id="s-out">↑ 0</div>
+  </div>
+
+  <div class="stat c-in">
+    <div class="stat-lbl">Total In</div>
+    <div class="stat-val" id="s-in">↓ 0</div>
+  </div>
+
+  <div class="stat" id="stat-chart" title="Click for breakdown">
+    <div class="stat-lbl">By Type</div>
+    <canvas id="chart-cvs" width="174" height="32"></canvas>
+  </div>
+
+  <div class="stat" id="stat-concil" title="Click for details">
+    <div class="stat-lbl">Conciliator</div>
+    <div class="concil-squares" id="concil-squares"></div>
+  </div>
+
+  <div id="upd">—</div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div id="circles-layer"></div>
+  <div id="empty">
+    <div class="et">&#9650;&#9660;&#9650;</div>
+    <div class="em" id="empty-msg">Click &#9881; to configure<br>your API endpoints</div>
+  </div>
+</div>
+
+<!-- USERS LIST BTN -->
+<button id="users-btn" title="Online users">&#128100;</button>
+
+<!-- GEAR -->
+<button id="gear" title="Settings">&#9881;</button>
+
+<!-- USERS LIST MODAL -->
+<div id="users-overlay">
+  <div id="users-modal">
+    <h2>&#128100; Online Users</h2>
+    <div id="users-list"></div>
+    <button class="btn btn-sec" id="users-modal-close">Close</button>
+  </div>
+</div>
+
+<!-- CHART DETAIL MODAL -->
+<div id="chart-overlay">
+  <div id="chart-modal">
+    <h2>&#9636; By Type</h2>
+    <div id="chart-detail"></div>
+    <div id="chart-hidden-badges"></div>
+    <div id="chart-modal-footer">
+      <button class="btn btn-sec" id="chart-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONCILIATOR DETAIL MODAL -->
+<div id="concil-overlay">
+  <div id="concil-modal">
+    <h2>&#9636; Conciliator</h2>
+    <div id="concil-detail"></div>
+    <div id="concil-modal-footer">
+      <button class="btn btn-sec" id="concil-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS REPORT MODAL -->
+<div id="status-overlay">
+  <div id="status-modal">
+    <h2 id="status-modal-title">&#9636; Status Report</h2>
+    <div id="status-detail">
+      <canvas id="status-pie-cvs" width="180" height="180"></canvas>
+      <div id="status-legend"></div>
+    </div>
+    <div id="status-modal-footer">
+      <button class="btn btn-sec" id="status-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="overlay">
+  <div id="modal">
+    <h2>&#9881; Settings</h2>
+
+    <div class="fg">
+      <label>Load Config from JSON</label>
+      <textarea id="cfg-json-input" placeholder='{"usersUrl": "...", "trxUrl": "...", ...}'></textarea>
+      <div class="fg-actions">
+        <button class="btn btn-sec" id="btn-load-json" type="button">Load from JSON</button>
+      </div>
+      <div class="fg-hint">Paste a full config JSON and click "Load from JSON" — it fills in the fields below. Nothing is saved until you click "Save &amp; Apply".</div>
+    </div>
+
+    <div class="fg">
+      <label>Users Endpoint URL</label>
+      <input type="url" id="cfg-users" placeholder="https://api.example.com/users/logged">
+    </div>
+
+    <div class="fg">
+      <label>Transactions Endpoint URL</label>
+      <input type="url" id="cfg-trx" placeholder="https://api.example.com/transactions">
+    </div>
+
+    <div class="fg">
+      <label>Conciliator Endpoint URL</label>
+      <input type="url" id="cfg-concil" placeholder="https://api.example.com/conciliator/status">
+    </div>
+
+    <div class="fg">
+      <label>Status Report Endpoint URL</label>
+      <input type="url" id="cfg-status-report" placeholder="https://api.example.com/report?date={current_day}&status={status_type}">
+      <div class="fg-hint">Use <code>{current_day}</code> and <code>{status_type}</code> as placeholders — they're filled in automatically (e.g. current_day becomes 2026-09-04, status_type becomes done/canceled/pending).</div>
+    </div>
+
+    <div class="fg">
+      <label>Auth Header Name</label>
+      <input type="text" id="cfg-hname" placeholder="Authorization">
+    </div>
+
+    <div class="fg">
+      <label>Auth Token Value</label>
+      <input type="text" id="cfg-token" placeholder="Bearer eyJ...">
+    </div>
+
+    <div class="fg">
+      <label>Circles (one per line, path:title)</label>
+      <textarea id="cfg-circles" placeholder="/transfer/ext:transferencia externa"></textarea>
+      <div class="fg-hint">A person walking with that path in their activity list will walk into and stay inside that circle.</div>
+    </div>
+
+    <div class="tg-row">
+      <span>Dark Mode</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-dark" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
+    <div class="tg-row">
+      <span>Show Nameplates</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-shownp" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
+    <div class="tg-row">
+      <span>Show Speech Bubbles</span>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-showbubble" checked>
+        <span class="tg-sl"></span>
+      </label>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn btn-primary" id="btn-save">Save &amp; Apply</button>
+      <button class="btn btn-sec"     id="btn-close">Close</button>
+      <button class="btn btn-danger"  id="btn-clear">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   LIVE LOBBY — pixel art user monitor SPA
+   ============================================================ */
+
+// ── Constants ──────────────────────────────────────────────
+const CFG_KEY  = 'livelobby_v1';
+const FW       = 32;          // sprite frame width  (px in spritesheet)
+const FH       = 48;          // sprite frame height (px in spritesheet)
+const WALK_F   = 8;           // walk animation frames per sheet
+const SPR_MS   = 110;         // ms per animation frame  (~9 fps)
+const SPEED    = 58;          // px / second (base movement)
+const POLL_MS  = 30_000;      // API refresh interval
+const FADE_MS  = 850;         // fade transition duration
+
+// Character definitions — folder name + sprite prefix
+const CHARS = [
+  { folder: 'Blue',               px: 'blue'            },
+  { folder: 'Green',              px: 'green'           },
+  { folder: 'Neon Blue & Purple', px: 'neonblue&purple' },
+  { folder: 'Orange',             px: 'orange'          },
+  { folder: 'Pink',               px: 'pink'            },
+  { folder: 'Pink & Neon Blue',   px: 'pink&neonblue'   },
+  { folder: 'Purple',             px: 'purple'          },
+  { folder: 'Red',                px: 'red'             },
+  { folder: 'Teal & Pink',        px: 'teal&pink'       },
+  { folder: 'Yellow & Purple',    px: 'yellow&purple'   },
+];
+
+// 8-direction standing sheet: assumed frame order
+// If sprites look wrong in standing pose, adjust these indices
+const STAND_IDX = {
+  'SOUTH':0, 'SOUTH-WEST':1, 'WEST':2, 'NORTH-WEST':3,
+  'NORTH':4, 'NORTH-EAST':5, 'EAST':6, 'SOUTH-EAST':7,
+};
+
+// ── Config / storage ───────────────────────────────────────
+const DEF = () => ({ usersUrl:'', trxUrl:'', concilUrl:'', statusReportUrl:'', hName:'Authorization', token:'', dark:true, showNp:true, showBubble:true, hiddenTypes:[], circles:[] });
+
+function loadCfg() {
+  try { return Object.assign(DEF(), JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
+  catch { return DEF(); }
+}
+function saveCfg(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); cfg = c; }
+
+let cfg = loadCfg();
+
+// ── Theme ──────────────────────────────────────────────────
+function setTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+
+function applyNpVisibility(show) {
+  document.body.classList.toggle('hide-np', !show);
+}
+
+function applyBubbleVisibility(show) {
+  document.body.classList.toggle('hide-bubble', !show);
+}
+
+
+// ── Type chart ─────────────────────────────────────────────
+let lastTotalByType = {};
+
+function typeColor(key) {
+  if (key.includes('entrante')) return '#22c55e';
+  if (key.includes('saliente')) return '#ef4444';
+  return '#38bdf8';
+}
+
+function drawTypeChart(types) {
+  const cvs = document.getElementById('chart-cvs');
+  if (!cvs) return;
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+
+  // Background
+  const dark = document.documentElement.dataset.theme !== 'light';
+  ctx.fillStyle = dark ? '#060d1a' : '#d5d9ed';
+  ctx.fillRect(0, 0, W, H);
+
+  const hidden  = new Set(cfg.hiddenTypes || []);
+  const entries = Object.entries(types).filter(([k]) => !hidden.has(k));
+  if (!entries.length) return;
+
+  const maxVal = Math.max(...entries.map(([, v]) => v), 1);
+  const n = entries.length;
+  const GAP = 2;
+  const BAR_W = Math.max(3, Math.floor((W - (n - 1) * GAP) / n));
+  const totalW = n * BAR_W + (n - 1) * GAP;
+  const startX = Math.floor((W - totalW) / 2);
+
+  entries.forEach(([key, val], i) => {
+    const barH = Math.max(2, Math.round((val / maxVal) * (H - 4)));
+    const x = startX + i * (BAR_W + GAP);
+    const y = H - 2 - barH;
+    ctx.fillStyle = typeColor(key);
+    ctx.fillRect(x, y, BAR_W, barH);
+    // 1-pixel highlight on top bar
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(x, y, BAR_W, 1);
+  });
+}
+
+// ── Image cache ────────────────────────────────────────────
+const imgCache = {};
+function cachedImg(src) {
+  if (!imgCache[src]) { const i = new Image(); i.src = src; imgCache[src] = i; }
+  return imgCache[src];
+}
+
+// ── Sprite path ────────────────────────────────────────────
+// encodeURIComponent encodes spaces → %20 and & → %26, which is what we need
+function sprPath(char, dir) {
+  const folder = encodeURIComponent(char.folder);
+  const pfx    = encodeURIComponent(char.px);
+  return dir
+    ? `img/characters/${folder}/${pfx}_walk_${dir}-Sheet.png`
+    : `img/characters/${folder}/${pfx}_8direction_standing-Sheet.png`;
+}
+
+// ── Utility ────────────────────────────────────────────────
+// FNV-1a 32-bit hash — deterministic sprite selection per email
+function fnv32(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h;
+}
+
+function charFor(email) { return CHARS[fnv32(email) % CHARS.length]; }
+
+// Map velocity vector → 8 direction name
+function velToDir(vx, vy) {
+  if (Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01) return 'SOUTH';
+  const a = ((Math.atan2(vy, vx) * 180 / Math.PI) + 360) % 360;
+  return ['EAST','SOUTH-EAST','SOUTH','SOUTH-WEST','WEST','NORTH-WEST','NORTH','NORTH-EAST'][Math.round(a / 45) % 8];
+}
+
+// Scale factor based on user count (zoom in for few users, out for many)
+function scaleFor(n) {
+  if (n <= 2)  return 3.0;
+  if (n <= 4)  return 2.5;
+  if (n <= 7)  return 2.0;
+  if (n <= 12) return 1.5;
+  if (n <= 18) return 1.2;
+  if (n <= 25) return 1.0;
+  return Math.max(0.55, 1.0 - (n - 25) * 0.02);
+}
+
+// Format remaining seconds as MM:SS or HH:MM:SS
+function fmtCD(expiry) {
+  const r = Math.max(0, Math.floor(expiry - Date.now() / 1000));
+  const h = (r / 3600) | 0, m = ((r % 3600) / 60) | 0, s = r % 60;
+  const p = n => String(n).padStart(2, '0');
+  return h > 0 ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+
+function shortEmail(e) { return e.length > 22 ? e.slice(0, 19) + '...' : e; }
+
+function lobbySize() {
+  const l = document.getElementById('lobby');
+  return { w: l.clientWidth, h: l.clientHeight };
+}
+
+// Only a person assigned to a circle may have a waypoint land inside it
+function pointInsideAnyCircle(x, y, marginPad = 24) {
+  return circles.some(c => Math.hypot(x - c.x, y - c.y) < c.r + marginPad);
+}
+
+function randCandidate() {
+  const { w, h } = lobbySize();
+  const mx = 70, my = 90;  // small fixed margin so chars roam the full screen
+  for (let i = 0; i < 20; i++) {
+    const x = mx + Math.random() * (w - mx * 2);
+    const y = my + Math.random() * (h - my * 2);
+    if (!pointInsideAnyCircle(x, y)) return { x, y };
+  }
+  return { x: mx + Math.random() * (w - mx * 2), y: my + Math.random() * (h - my * 2) };
+}
+
+// Pick the candidate that is furthest from all other active characters
+function randTarget(excludeEmail) {
+  const others = [...users.values()].filter(u => !u.fading && u.email !== excludeEmail);
+  const CANDIDATES = 12;
+  let best = null, bestScore = -1;
+  for (let i = 0; i < CANDIDATES; i++) {
+    const c = randCandidate();
+    // Score = minimum distance to any other character (maximize this)
+    const score = others.length === 0
+      ? Math.random()
+      : Math.min(...others.map(u => Math.hypot(u.x - c.x, u.y - c.y)));
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return best;
+}
+
+// ── Station circles ────────────────────────────────────────
+// Config lines "path:title" → laid-out circles a matching person walks into
+const CIRCLE_COLORS = ['#3b82f6','#22c55e','#eab308','#ef4444','#a855f7','#06b6d4','#f97316','#ec4899'];
+function circleColor(path) { return CIRCLE_COLORS[fnv32(path) % CIRCLE_COLORS.length]; }
+
+function parseCircles(text) {
+  return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const idx = line.indexOf(':');
+    const path  = (idx === -1 ? line : line.slice(0, idx)).trim();
+    const title = (idx === -1 ? line : line.slice(idx + 1)).trim();
+    return { path, title };
+  }).filter(c => c.path);
+}
+
+let circles = [];   // laid-out: {path, title, x, y, r, baseR, maxR, color}
+const CIRCLE_GROWTH_PER_USER = 12;   // px of radius added per assigned person
+
+function layoutCircles() {
+  const { w, h } = lobbySize();
+  const defs = cfg.circles || [];
+  circles = [];
+  if (!defs.length) { renderCircles(); return; }
+
+  const n = defs.length;
+  const marginX = 90, marginY = 110;
+  const usableW = Math.max(w - marginX * 2, 60);
+  const usableH = Math.max(h - marginY * 2, 60);
+
+  // Grid sized to the lobby's aspect ratio so circles spread across the whole floor
+  const cols = Math.max(1, Math.round(Math.sqrt(n * usableW / usableH)));
+  const rows = Math.max(1, Math.ceil(n / cols));
+  const cellW = usableW / cols;
+  const cellH = usableH / rows;
+
+  const gapPad = 16;
+  const baseR  = Math.max(30, Math.min(60, Math.floor(Math.min(cellW, cellH) / 2) - gapPad));
+  const maxR   = Math.max(baseR, Math.floor(Math.min(cellW, cellH) / 2) - 6);
+
+  const totalGridH = rows * cellH;
+  const startY = marginY + (usableH - totalGridH) / 2 + cellH / 2;
+
+  defs.forEach((def, i) => {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const itemsInRow = Math.min(cols, n - row * cols);
+    const rowW = itemsInRow * cellW;
+    const startX = marginX + (usableW - rowW) / 2 + cellW / 2;
+    circles.push({
+      path: def.path, title: def.title,
+      x: startX + col * cellW, y: startY + row * cellH,
+      r: baseR, baseR, maxR,
+      color: circleColor(def.path),
+    });
+  });
+  updateCircleSizes();
+}
+
+// Grow each circle with how many people are currently assigned to it (down to baseR),
+// then nudge any occupant whose target fell outside a (possibly shrunk) circle back in.
+function updateCircleSizes() {
+  const counts = {};
+  users.forEach(u => { if (u.circleKey) counts[u.circleKey] = (counts[u.circleKey] || 0) + 1; });
+  circles.forEach(c => {
+    const n = counts[c.path] || 0;
+    c.count    = n;
+    c.occupied = n > 0;
+    c.r = n > 0 ? Math.min(c.maxR, c.baseR + n * CIRCLE_GROWTH_PER_USER) : c.baseR * 0.5;
+  });
+  renderCircles();
+
+  users.forEach(u => {
+    if (!u.circleKey) return;
+    const c = circles.find(c => c.path === u.circleKey);
+    if (!c) return;
+    u.circle = c;
+    if (Math.hypot(u.tx - c.x, u.ty - c.y) > c.r - 8) {
+      const p = randPointInCircle(c);
+      u.tx = p.x; u.ty = p.y;
+    }
+  });
+}
+
+function renderCircles() {
+  const layer = document.getElementById('circles-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  circles.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'circle-marker';
+    el.style.left   = c.x + 'px';
+    el.style.top    = c.y + 'px';
+    el.style.width  = el.style.height = (c.r * 2) + 'px';
+    const color = c.occupied ? c.color : '#6b7280';
+    el.style.borderColor = color;
+    el.style.background  = color + '1a';
+    el.title = c.occupied ? `${c.title} (${c.count})` : c.title;
+    const lbl = document.createElement('span');
+    lbl.className = 'cm-label';
+    lbl.textContent = c.title;
+    el.appendChild(lbl);
+    if (c.occupied) {
+      const cnt = document.createElement('span');
+      cnt.className = 'cm-count';
+      cnt.textContent = c.count;
+      el.appendChild(cnt);
+    }
+    layer.appendChild(el);
+  });
+}
+
+// Random point inside a circle, kept away from its border
+function randPointInCircle(c) {
+  const maxR = Math.max(6, c.r - 14);
+  const ang  = Math.random() * Math.PI * 2;
+  const dist = Math.random() * maxR;
+  return { x: c.x + Math.cos(ang) * dist, y: c.y + Math.sin(ang) * dist };
+}
+
+// Most recent activity (by timestamp) that matches a circle's path wins
+function findCircleForActs(acts) {
+  if (!circles.length || !acts || !acts.length) return null;
+  for (let i = acts.length - 1; i >= 0; i--) {
+    const p = acts[i].path;
+    if (!p) continue;
+    const c = circles.find(c => p.includes(c.path));
+    if (c) return c;
+  }
+  return null;
+}
+
+// Crown badge: shown for users whose activity list includes /auth/login-monitor
+function hasLoginMonitorAct(acts) {
+  return !!acts && acts.some(a => a.path && a.path.includes('/auth/login-monitor'));
+}
+function setUserCrown(u, has) {
+  u.crown.classList.toggle('show', has);
+}
+
+// Assign/clear a user's station circle, retargeting them immediately on change
+function setUserCircle(u, circle) {
+  const newKey = circle ? circle.path : null;
+  if (newKey === (u.circleKey || null)) { u.circle = circle; return; }
+  u.circle = circle;
+  u.circleKey = newKey;
+  u.pausing = false;
+  const t = circle ? randPointInCircle(circle) : randTarget(u.email);
+  u.tx = t.x; u.ty = t.y;
+}
+
+// ── User state ─────────────────────────────────────────────
+const users = new Map();   // email → userObj
+let lastTs = 0, lastSpr = 0;
+
+function makeUser(email, expiry) {
+  const char   = charFor(email);
+  const { w, h } = lobbySize();
+  const active = [...users.values()].filter(u => !u.fading).length;
+  const sc     = scaleFor(active + 1);
+
+  // Spread-aware start position
+  const startC = randTarget(email);
+  const x = startC.x;
+  const y = startC.y;
+  const tgt = randTarget(email);
+
+  // ── DOM ────────────────────────────────────────────────
+  const el   = document.createElement('div'); el.className = 'char';
+  const np   = document.createElement('div'); np.className = 'nameplate';
+  const emEl = document.createElement('span'); emEl.className = 'np-email';
+  emEl.textContent = shortEmail(email); emEl.title = email;
+  const cdEl = document.createElement('span'); cdEl.className = 'np-cd';
+  cdEl.textContent = fmtCD(expiry);
+  np.append(emEl, cdEl);
+
+  // Speech bubble (sits above character, positioned relative to .char)
+  const bWrap  = document.createElement('div'); bWrap.className = 'bubble-wrap';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  bWrap.appendChild(bubble);
+
+  // Click/touch anywhere on the character: toggle expanded bubble + show nameplate
+  let _touchHandled = false;
+  el.addEventListener('touchstart', () => {
+    _touchHandled = true;
+    bubble.classList.toggle('expanded');
+    el.classList.toggle('tapped');
+  }, { passive: true });
+  el.addEventListener('click', () => {
+    if (_touchHandled) { _touchHandled = false; return; }
+    bubble.classList.toggle('expanded');
+    el.classList.toggle('tapped');
+  });
+
+  const cvs = document.createElement('canvas'); cvs.className = 'spr';
+  cvs.width  = Math.round(FW * sc);
+  cvs.height = Math.round(FH * sc);
+
+  const crown = document.createElement('div'); crown.className = 'crown'; crown.textContent = '\u{1F451}';
+  const sprWrap = document.createElement('div'); sprWrap.className = 'spr-wrap';
+  sprWrap.append(cvs, crown);
+
+  el.append(bWrap, np, sprWrap);
+  el.style.left = Math.round(x) + 'px';
+  el.style.top  = Math.round(y) + 'px';
+  document.getElementById('lobby').appendChild(el);
+
+  // Fade in on next frame
+  requestAnimationFrame(() => el.classList.add('visible'));
+
+  // Preload all directional sprites
+  const sprs = {};
+  ['NORTH','NORTH-EAST','EAST','SOUTH-EAST','SOUTH','SOUTH-WEST','WEST','NORTH-WEST']
+    .forEach(d => sprs[d] = cachedImg(sprPath(char, d)));
+  sprs.stand = cachedImg(sprPath(char, null));
+
+  return {
+    email, expiry, x, y, tx: tgt.x, ty: tgt.y,
+    vx: 0, vy: 0, dir: 'SOUTH', frame: 0,
+    moving: false, pausing: false, pauseEnd: 0,
+    sc, char, sprs, el, cvs, crown,
+    ctx: cvs.getContext('2d'),
+    cdEl, bubble,
+    actQueue:    [],   // pending {key, path} items waiting to be revealed
+    actTimer:    null, // interval handle for sequential reveal
+    renderedActs: {},  // key → DOM line element (already in bubble)
+    acts: [], circle: null, circleKey: null,  // station-circle assignment
+    fading: false, fadeTimer: null,
+  };
+}
+
+// Feed a new activities list to a user — reveal one line every 3s
+// Stable key for an activity: index:path:timestamp
+function actKey(idx, act) { return `${idx}:${act.path}:${act.timestamp}`; }
+
+function updateActivities(u, acts) {
+  // acts = [{path, timestamp}, ...] sorted by timestamp asc
+
+  // Build the full set of keys the API is currently sending
+  const incomingKeys = new Set(acts.map((a, i) => actKey(i, a)));
+
+  // Remove lines that are no longer present in the API response
+  for (const [key, line] of Object.entries(u.renderedActs)) {
+    if (!incomingKeys.has(key)) {
+      line.classList.remove('show');
+      setTimeout(() => line.remove(), 400);
+      delete u.renderedActs[key];
+    }
+  }
+
+  // Find new activities not yet rendered, preserving order
+  const toQueue = acts
+    .map((a, i) => ({ key: actKey(i, a), path: a.path }))
+    .filter(({ key }) => !u.renderedActs[key]);
+
+  if (!toQueue.length) return;
+
+  // Append new items to the existing queue
+  u.actQueue.push(...toQueue);
+
+  // If no timer is running, kick it off
+  if (u.actTimer) return;
+
+  function revealNext() {
+    if (!u.actQueue.length) {
+      clearInterval(u.actTimer); u.actTimer = null; return;
+    }
+    const { key, path } = u.actQueue.shift();
+    // Guard: may have been removed while queued
+    if (u.renderedActs[key]) return;
+    const line = document.createElement('div');
+    line.className = 'bubble-line';
+    line.textContent = path;
+    line.title = path;
+    u.bubble.appendChild(line);
+    u.renderedActs[key] = line;
+    requestAnimationFrame(() => requestAnimationFrame(() => line.classList.add('show')));
+  }
+
+  revealNext();  // first one immediately
+  u.actTimer = setInterval(revealNext, 3000);
+}
+
+function removeUser(email) {
+  const u = users.get(email);
+  if (!u || u.fading) return;
+  if (u.actTimer) { clearInterval(u.actTimer); u.actTimer = null; }
+  u.actQueue = [];
+  u.renderedActs = {};
+  u.fading = true;
+  u.el.classList.remove('visible');
+  u.el.classList.add('fade');
+  u.fadeTimer = setTimeout(() => {
+    u.el.remove();
+    users.delete(email);
+    reZoom();
+    syncEmptyState();
+  }, FADE_MS + 120);
+}
+
+function reviveUser(u, expiry) {
+  clearTimeout(u.fadeTimer);
+  u.fading  = false;
+  u.expiry  = expiry;
+  u.el.classList.remove('fade');
+  requestAnimationFrame(() => u.el.classList.add('visible'));
+}
+
+// Recompute canvas sizes after user count changes
+function reZoom() {
+  const active = [...users.values()].filter(u => !u.fading);
+  const sc = scaleFor(active.length);
+  active.forEach(u => {
+    if (u.sc === sc) return;
+    u.sc  = sc;
+    const nw = Math.round(FW * sc), nh = Math.round(FH * sc);
+    u.cvs.width  = nw;
+    u.cvs.height = nh;
+    u.ctx = u.cvs.getContext('2d');   // context resets on resize
+  });
+}
+
+// ── Movement ───────────────────────────────────────────────
+function moveUser(u, dt) {
+  if (u.fading) return;
+  const now = performance.now();
+
+  if (u.pausing) {
+    if (now < u.pauseEnd) { u.moving = false; return; }
+    u.pausing = false;
+  }
+
+  u.moving = true;
+  const dx = u.tx - u.x, dy = u.ty - u.y;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist < 4) {
+    // Arrived — pause then pick a new destination
+    u.pausing  = true;
+    u.pauseEnd = now + 3000 + Math.random() * 7000;
+    u.moving   = false;
+    const t = u.circle ? randPointInCircle(u.circle) : randTarget(u.email);
+    u.tx = t.x; u.ty = t.y;
+    return;
+  }
+
+  const nx = dx / dist, ny = dy / dist;
+
+  // Steer around any circle the person isn't allowed to enter
+  let fx = nx, fy = ny;
+  for (const c of circles) {
+    if (u.circleKey && c.path === u.circleKey) continue;
+    const cx = u.x - c.x, cy = u.y - c.y;
+    const cd = Math.hypot(cx, cy) || 0.001;
+    const pushR = c.r + 24;
+    if (cd < pushR) {
+      const strength = (pushR - cd) / pushR;
+      fx += (cx / cd) * strength * 2.5;
+      fy += (cy / cd) * strength * 2.5;
+    }
+  }
+  const flen = Math.hypot(fx, fy) || 1;
+  fx /= flen; fy /= flen;
+
+  u.vx = fx; u.vy = fy;
+  const step = Math.min(SPEED * dt, dist);
+  u.x += fx * step;
+  u.y += fy * step;
+  u.dir = velToDir(fx, fy);
+  u.el.style.left = Math.round(u.x) + 'px';
+  u.el.style.top  = Math.round(u.y) + 'px';
+}
+
+// ── Sprite rendering ───────────────────────────────────────
+function drawUser(u, adv) {
+  if (u.fading) return;
+  if (adv && u.moving) u.frame = (u.frame + 1) % WALK_F;
+
+  const { ctx, cvs, sc, sprs, dir, moving, frame } = u;
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+  const img = moving ? sprs[dir] : sprs.stand;
+  const sx  = moving ? frame * FW : (STAND_IDX[dir] ?? 0) * FW;
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, sx, 0, FW, FH, 0, 0, cvs.width, cvs.height);
+  } else {
+    // Ghost placeholder while image loads
+    ctx.fillStyle = 'rgba(80,120,255,0.18)';
+    ctx.fillRect(4, 4, cvs.width - 8, cvs.height - 8);
+  }
+}
+
+// ── Countdown ticker ───────────────────────────────────────
+setInterval(() => {
+  const now = Date.now() / 1000;
+  users.forEach((u, email) => {
+    if (u.fading) return;
+    const r = u.expiry - now;
+    u.cdEl.textContent = fmtCD(u.expiry);
+    u.cdEl.className   = r < 60 ? 'np-cd crit' : r < 300 ? 'np-cd warn' : 'np-cd';
+    if (r <= 0) removeUser(email);
+  });
+}, 1000);
+
+// ── Render loop ────────────────────────────────────────────
+function renderLoop(ts) {
+  const dt  = Math.min((ts - lastTs) / 1000, 0.05);   // cap delta at 50 ms
+  lastTs = ts;
+  const adv = ts - lastSpr >= SPR_MS;
+  if (adv) lastSpr = ts;
+  users.forEach(u => { moveUser(u, dt); drawUser(u, adv); });
+  requestAnimationFrame(renderLoop);
+}
+
+// ── URL templating ─────────────────────────────────────────
+// Resolves {placeholder} tokens in a configured endpoint URL, e.g.
+// {current_day} → today's date as YYYY-MM-DD. Available to every
+// configured endpoint, not just the status report one.
+function todayStr() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function resolveUrlTemplate(url, vars) {
+  if (!url) return url;
+  return url.replace(/\{(\w+)\}/g, (m, key) => (key in vars ? vars[key] : m));
+}
+
+// ── API ────────────────────────────────────────────────────
+async function apiFetch(url, extraVars) {
+  const h = {};
+  if (cfg.hName && cfg.token) h[cfg.hName] = cfg.token;
+  const resolved = resolveUrlTemplate(url, { current_day: todayStr(), ...extraVars });
+  return (await fetch(resolved, { headers: h })).json();
+}
+
+async function fetchUsers() {
+  if (!cfg.usersUrl) return;
+  const json   = await apiFetch(cfg.usersUrl);
+  const root   = json.data || {};
+
+  // Support both old shape (data = {email:ts}) and new shape (data.logged_users)
+  const logged     = root.logged_users || root;
+  const activities = root.activities   || [];
+
+  // Group activities per email, sorted by timestamp asc
+  const actsByEmail = {};
+  for (const act of activities) {
+    if (!actsByEmail[act.email]) actsByEmail[act.email] = [];
+    actsByEmail[act.email].push(act);
+  }
+  for (const email in actsByEmail)
+    actsByEmail[email].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Remove users that disappeared from the list
+  users.forEach((u, email) => { if (!(email in logged) && !u.fading) removeUser(email); });
+
+  // Add new users / update existing
+  let changed = false;
+  for (const [email, expiry] of Object.entries(logged)) {
+    const acts = actsByEmail[email] || [];
+    if (users.has(email)) {
+      const u = users.get(email);
+      if (u.fading) reviveUser(u, expiry); else u.expiry = expiry;
+      if (acts.length) updateActivities(u, acts);
+      u.acts = acts;
+      setUserCircle(u, findCircleForActs(acts));
+      setUserCrown(u, hasLoginMonitorAct(acts));
+    } else {
+      const u = makeUser(email, expiry);
+      users.set(email, u);
+      if (acts.length) updateActivities(u, acts);
+      u.acts = acts;
+      setUserCircle(u, findCircleForActs(acts));
+      setUserCrown(u, hasLoginMonitorAct(acts));
+      changed = true;
+    }
+  }
+  if (changed) reZoom();
+  updateCircleSizes();
+
+  const active = [...users.values()].filter(u => !u.fading).length;
+  document.getElementById('s-users').textContent = active;
+  syncEmptyState();
+}
+
+async function fetchTrx() {
+  if (!cfg.trxUrl) return;
+  const json = await apiFetch(cfg.trxUrl);
+  const t    = json.trx_status_total || {};
+  const done = t.done || 0, cncl = t.canceled || 0, pend = t.pending || 0;
+  const tot  = Math.max(done + cncl + pend, 1);
+
+  document.getElementById('s-done').textContent = done.toLocaleString();
+  document.getElementById('s-cncl').textContent = cncl.toLocaleString();
+  document.getElementById('s-pend').textContent = pend.toLocaleString();
+  document.getElementById('b-done').style.width = (done / tot * 100) + '%';
+  document.getElementById('b-cncl').style.width = (cncl / tot * 100) + '%';
+  document.getElementById('b-pend').style.width = (pend / tot * 100) + '%';
+
+  document.getElementById('s-out').textContent = '↑ ' + (json.total_out || 0).toLocaleString();
+  document.getElementById('s-in').textContent  = '↓ ' + (json.total_in  || 0).toLocaleString();
+
+  lastTotalByType = json.total_by_type || {};
+  drawTypeChart(lastTotalByType);
+}
+
+// ── Conciliator ────────────────────────────────────────────
+let lastConcilData = null;
+
+// Work out per-type status: 'yellow' if actively running in the current
+// run, 'green' if no pending items, otherwise 'red'.
+function concilTypeStatus(data, key) {
+  const t = data.types?.[key];
+  if (!t) return 'green';
+  if (isConcilTypeRunning(data, key)) return 'yellow';
+  return (t.pending_count || 0) === 0 ? 'green' : 'red';
+}
+
+// A run processes types sequentially in `last_priority_order`. While a run
+// is in progress, the "currently running" type is the first one (in that
+// order) whose last finish is older than the current run's start.
+function isConcilTypeRunning(data, key) {
+  if (!data.current_run_id) return false;
+  const order = data.last_priority_order || Object.keys(data.types || {});
+  const startedAt = data.current_run_started_at ? new Date(data.current_run_started_at).getTime() : 0;
+  for (const k of order) {
+    const t = data.types?.[k];
+    if (!t) continue;
+    const finishedAt = t.last_run_finished_at ? new Date(t.last_run_finished_at).getTime() : 0;
+    if (finishedAt < startedAt) return k === key;
+  }
+  return false;
+}
+
+function drawConcilSquares(data) {
+  const box = document.getElementById('concil-squares');
+  if (!box) return;
+  box.innerHTML = '';
+  const types = Object.keys(data?.types || {});
+  if (!types.length) {
+    box.innerHTML = '<span class="concil-empty">No data</span>';
+    return;
+  }
+  types.forEach(key => {
+    const st = concilTypeStatus(data, key);
+    const t  = data.types[key];
+    const sq = document.createElement('div');
+    sq.className = `concil-sq st-${st}`;
+    sq.title = `${key}: ${st === 'yellow' ? 'running' : (t.pending_count || 0) + ' pending'}`;
+    box.appendChild(sq);
+  });
+}
+
+function fmtAgo(iso) {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return new Date(iso).toLocaleString();
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function fmtDur(sec) {
+  if (sec == null) return '—';
+  if (sec < 60) return `${sec.toFixed(1)}s`;
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}m ${s}s`;
+}
+
+async function fetchConcil() {
+  if (!cfg.concilUrl) { lastConcilData = null; drawConcilSquares(null); return; }
+  const data = await apiFetch(cfg.concilUrl);
+  lastConcilData = data;
+  drawConcilSquares(data);
+}
+
+function openConcilModal() {
+  const data   = lastConcilData;
+  const detail = $('concil-detail');
+  detail.innerHTML = '';
+
+  if (!data) {
+    detail.innerHTML = '<div style="font-size:8px;color:var(--dim);text-align:center;padding:20px 0">No data</div>';
+    $('concil-overlay').classList.add('open');
+    return;
+  }
+
+  const runSection = document.createElement('div'); runSection.className = 'cc-section';
+  const runTitle = document.createElement('div'); runTitle.className = 'cc-section-title'; runTitle.textContent = 'Run Status';
+  runSection.appendChild(runTitle);
+  const runRows = data.current_run_id
+    ? [
+        ['Current Run', data.current_run_id],
+        ['Started', fmtAgo(data.current_run_started_at)],
+      ]
+    : [['Current Run', 'idle']];
+  runRows.push(
+    ['Last Run', data.last_run_id || '—'],
+    ['Last Started', fmtAgo(data.last_run_started_at)],
+    ['Last Finished', fmtAgo(data.last_run_finished_at)],
+    ['Last Duration', fmtDur(data.last_run_duration_seconds)],
+  );
+  if ((data.last_run_deferred || []).length)
+    runRows.push(['Deferred', data.last_run_deferred.join(', ')]);
+  runRows.forEach(([k, v]) => {
+    const row = document.createElement('div'); row.className = 'cc-kv';
+    row.innerHTML = `<span class="k">${k}</span><span class="v"></span>`;
+    row.querySelector('.v').textContent = v;
+    runSection.appendChild(row);
+  });
+  detail.appendChild(runSection);
+
+  const typesSection = document.createElement('div'); typesSection.className = 'cc-section';
+  const typesTitle = document.createElement('div'); typesTitle.className = 'cc-section-title'; typesTitle.textContent = 'Types';
+  typesSection.appendChild(typesTitle);
+
+  const order = data.last_priority_order || Object.keys(data.types || {});
+  order.forEach(key => {
+    const t = data.types?.[key];
+    if (!t) return;
+    const st = concilTypeStatus(data, key);
+    const color = st === 'green' ? '#22c55e' : st === 'yellow' ? '#eab308' : '#ef4444';
+    const summaryTotal = data.last_run_summary?.[key]?.total;
+
+    const row = document.createElement('div'); row.className = 'cc-type-row';
+    const head = document.createElement('div'); head.className = 'cc-type-head';
+    head.innerHTML = `<span class="cc-dot" style="background:${color}"></span><span class="cc-type-name"></span>`;
+    head.querySelector('.cc-type-name').textContent = key;
+    row.appendChild(head);
+
+    const body = document.createElement('div'); body.className = 'cc-type-body';
+    const fields = [
+      ['Pending', t.pending_count ?? '—'],
+      ['Last Total', t.last_run_total ?? summaryTotal ?? '—'],
+      ['Last Run', fmtAgo(t.last_run_at)],
+      ['Last Success', fmtAgo(t.last_success_at)],
+      ['Pending Checked', fmtAgo(t.pending_checked_at)],
+      ['Consecutive Errors', t.consecutive_errors ?? 0],
+    ];
+    fields.forEach(([k, v]) => {
+      const kEl = document.createElement('span'); kEl.className = 'k'; kEl.textContent = k;
+      const vEl = document.createElement('span'); vEl.className = 'v'; vEl.textContent = v;
+      if (k === 'Consecutive Errors' && v > 0) vEl.classList.add('cc-err');
+      body.append(kEl, vEl);
+    });
+    row.appendChild(body);
+
+    if (t.last_run_error || t.pending_check_error) {
+      const errEl = document.createElement('div'); errEl.className = 'cc-err';
+      errEl.style.fontSize = '7px';
+      errEl.textContent = t.last_run_error || t.pending_check_error;
+      row.appendChild(errEl);
+    }
+
+    typesSection.appendChild(row);
+  });
+  detail.appendChild(typesSection);
+
+  $('concil-overlay').classList.add('open');
+}
+function closeConcilModal() { $('concil-overlay').classList.remove('open'); }
+
+// ── Status report (pie chart) ───────────────────────────────
+const STATUS_LABELS = { done: 'Done', canceled: 'Canceled', pending: 'Pending' };
+
+function drawStatusPie(entries) {
+  const cvs = $('status-pie-cvs');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const dark = document.documentElement.dataset.theme !== 'light';
+  ctx.fillStyle = dark ? '#060d1a' : '#d5d9ed';
+  ctx.beginPath();
+  ctx.arc(W / 2, H / 2, W / 2 - 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  if (!total) return;
+
+  const cx = W / 2, cy = H / 2, r = W / 2 - 2;
+  let start = -Math.PI / 2;
+  entries.forEach(([key, val]) => {
+    if (!val) return;
+    const slice = (val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + slice);
+    ctx.closePath();
+    ctx.fillStyle = typeColor(key);
+    ctx.fill();
+    start += slice;
+  });
+}
+
+function renderStatusLegend(entries) {
+  const box = $('status-legend');
+  box.innerHTML = '';
+  if (!entries.length) {
+    box.innerHTML = '<div class="sl-empty">No data</div>';
+    return;
+  }
+  entries.forEach(([key, val]) => {
+    const row = document.createElement('div'); row.className = 'sl-row';
+    row.innerHTML = `<span class="sl-dot" style="background:${typeColor(key)}"></span><span class="sl-lbl"></span><span class="sl-val"></span>`;
+    row.querySelector('.sl-lbl').textContent = key;
+    row.querySelector('.sl-val').textContent = val.toLocaleString();
+    box.appendChild(row);
+  });
+}
+
+async function openStatusModal(statusType) {
+  $('status-modal-title').textContent = `▶ ${STATUS_LABELS[statusType] || statusType} Report`;
+  $('status-legend').innerHTML = '<div class="sl-empty">Loading…</div>';
+  drawStatusPie([]);
+  $('status-overlay').classList.add('open');
+
+  if (!cfg.statusReportUrl) {
+    $('status-legend').innerHTML = '<div class="sl-empty">No Status Report URL configured</div>';
+    return;
+  }
+
+  try {
+    const json = await apiFetch(cfg.statusReportUrl, { status_type: statusType });
+    const entries = Object.entries(json.total_by_type || {});
+    drawStatusPie(entries);
+    renderStatusLegend(entries);
+  } catch (e) {
+    $('status-legend').innerHTML = '<div class="sl-empty">Fetch error</div>';
+    console.error('[LiveLobby]', e);
+  }
+}
+function closeStatusModal() { $('status-overlay').classList.remove('open'); }
+
+async function fetchAll() {
+  const upd = document.getElementById('upd');
+  upd.textContent = 'Fetching...';
+  try {
+    await Promise.all([fetchUsers(), fetchTrx(), fetchConcil()]);
+    upd.textContent = 'Updated\n' + new Date().toLocaleTimeString();
+  } catch (e) {
+    upd.textContent = 'Fetch error';
+    console.error('[LiveLobby]', e);
+  }
+}
+
+// ── Empty state ────────────────────────────────────────────
+function syncEmptyState() {
+  const hasUrl = !!cfg.usersUrl;
+  const active = [...users.values()].filter(u => !u.fading).length;
+  const empty  = document.getElementById('empty');
+  const msg    = document.getElementById('empty-msg');
+
+  if (hasUrl && active > 0) {
+    empty.classList.add('hidden');
+  } else {
+    empty.classList.remove('hidden');
+    msg.innerHTML = hasUrl
+      ? 'No users online right now'
+      : 'Click &#9881; to configure<br>your API endpoints';
+  }
+}
+
+// ── Settings modal ─────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// Fills the settings form fields from a config object (defaults for any
+// missing key). Used both to open the modal with the saved config and to
+// preview a pasted JSON config before it's saved.
+function fillConfigForm(c) {
+  const merged = Object.assign(DEF(), c);
+  $('cfg-users').value  = merged.usersUrl;
+  $('cfg-trx').value    = merged.trxUrl;
+  $('cfg-concil').value = merged.concilUrl;
+  $('cfg-status-report').value = merged.statusReportUrl;
+  $('cfg-hname').value  = merged.hName;
+  $('cfg-token').value  = merged.token;
+  $('cfg-circles').value = (merged.circles || []).map(c => `${c.path}:${c.title}`).join('\n');
+  $('cfg-dark').checked      = merged.dark !== false;
+  $('cfg-shownp').checked    = merged.showNp !== false;
+  $('cfg-showbubble').checked = merged.showBubble !== false;
+}
+
+function openModal() {
+  fillConfigForm(cfg);
+  $('cfg-json-input').value = '';
+  $('overlay').classList.add('open');
+}
+function closeModal() { $('overlay').classList.remove('open'); }
+
+$('gear').addEventListener('click', openModal);
+$('btn-close').addEventListener('click', closeModal);
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
+
+// ── Users list modal ───────────────────────────────────────
+function openUsersList() {
+  const list = $('users-list');
+  const active = [...users.values()].filter(u => !u.fading)
+    .sort((a, b) => a.email.localeCompare(b.email));
+
+  if (active.length === 0) {
+    list.innerHTML = '<div class="ul-empty">No users online</div>';
+  } else {
+    const now = Date.now() / 1000;
+    list.innerHTML = active.map(u => {
+      const r    = u.expiry - now;
+      const cls  = r < 60 ? 'ul-cd crit' : r < 300 ? 'ul-cd warn' : 'ul-cd';
+      // Collect visible paths from bubble lines
+      const visiblePaths = [...u.bubble.querySelectorAll('.bubble-line.show')]
+        .map(el => el.textContent).filter(Boolean);
+      const pathsHtml = visiblePaths.map(p =>
+        `<span class="ul-path" title="${p}">${p}</span>`).join('');
+      return `<div class="ul-row">
+        <div class="ul-info">
+          <span class="ul-email" title="${u.email}">${u.email}</span>
+          ${pathsHtml}
+        </div>
+        <span class="${cls}">${fmtCD(u.expiry)}</span>
+      </div>`;
+    }).join('');
+  }
+  $('users-overlay').classList.add('open');
+}
+function closeUsersList() { $('users-overlay').classList.remove('open'); }
+
+$('users-btn').addEventListener('click', openUsersList);
+$('users-modal-close').addEventListener('click', closeUsersList);
+$('users-overlay').addEventListener('click', e => { if (e.target === $('users-overlay')) closeUsersList(); });
+
+// ── Chart detail modal ──────────────────────────────────────
+function openChartModal() {
+  const hiddenSet = new Set(cfg.hiddenTypes || []);
+  const all       = Object.entries(lastTotalByType).sort((a, b) => b[1] - a[1]);
+  const visible   = all.filter(([k]) => !hiddenSet.has(k));
+  const hiddenArr = all.filter(([k]) =>  hiddenSet.has(k));
+  const maxVal    = Math.max(...visible.map(([, v]) => v), 1);
+
+  const detail = $('chart-detail');
+  const badges = $('chart-hidden-badges');
+  detail.innerHTML = '';
+  badges.innerHTML = '';
+
+  function toggle(key, add) {
+    const h = new Set(cfg.hiddenTypes || []);
+    add ? h.add(key) : h.delete(key);
+    saveCfg({ ...cfg, hiddenTypes: [...h] });
+    openChartModal();
+    drawTypeChart(lastTotalByType);
+  }
+
+  if (!visible.length) {
+    detail.innerHTML = '<div style="font-size:8px;color:var(--dim);text-align:center;padding:20px 0">No data</div>';
+  } else {
+    visible.forEach(([key, val]) => {
+      const color = typeColor(key);
+      const pct   = Math.round(val / maxVal * 100);
+
+      const row = document.createElement('div'); row.className = 'ct-row';
+
+      const tog = document.createElement('button');
+      tog.className = 'ct-toggle'; tog.textContent = '●'; tog.title = 'Hide';
+      tog.addEventListener('click', () => toggle(key, true));
+
+      const lbl = document.createElement('span');
+      lbl.className = 'ct-lbl'; lbl.title = key; lbl.textContent = key;
+
+      const track = document.createElement('div'); track.className = 'ct-track';
+      const bar   = document.createElement('div'); bar.className = 'ct-bar';
+      bar.style.cssText = `width:${pct}%;background:${color}`;
+      track.appendChild(bar);
+
+      const valEl = document.createElement('span');
+      valEl.className = 'ct-val'; valEl.style.color = color; valEl.textContent = val;
+
+      row.append(tog, lbl, track, valEl);
+      detail.appendChild(row);
+    });
+  }
+
+  hiddenArr.forEach(([key]) => {
+    const badge = document.createElement('button');
+    badge.className   = 'ct-badge';
+    badge.textContent = key;
+    badge.title       = 'Restore';
+    badge.addEventListener('click', () => toggle(key, false));
+    badges.appendChild(badge);
+  });
+
+  $('chart-overlay').classList.add('open');
+}
+function closeChartModal() { $('chart-overlay').classList.remove('open'); }
+
+$('stat-chart').addEventListener('click', openChartModal);
+$('chart-modal-close').addEventListener('click', closeChartModal);
+$('chart-overlay').addEventListener('click', e => { if (e.target === $('chart-overlay')) closeChartModal(); });
+
+$('stat-concil').addEventListener('click', openConcilModal);
+$('concil-modal-close').addEventListener('click', closeConcilModal);
+$('concil-overlay').addEventListener('click', e => { if (e.target === $('concil-overlay')) closeConcilModal(); });
+
+document.querySelector('.c-done').addEventListener('click', () => openStatusModal('done'));
+document.querySelector('.c-cncl').addEventListener('click', () => openStatusModal('canceled'));
+document.querySelector('.c-pend').addEventListener('click', () => openStatusModal('pending'));
+$('status-modal-close').addEventListener('click', closeStatusModal);
+$('status-overlay').addEventListener('click', e => { if (e.target === $('status-overlay')) closeStatusModal(); });
+
+$('btn-load-json').addEventListener('click', () => {
+  const raw = $('cfg-json-input').value.trim();
+  if (!raw) return;
+  let json;
+  try { json = JSON.parse(raw); }
+  catch (e) { alert('Invalid JSON: ' + e.message); return; }
+  fillConfigForm(json);
+  alert('Config loaded into the form below. Click "Save & Apply" to confirm.');
+});
+
+$('cfg-dark').addEventListener('change', e => { setTheme(e.target.checked); drawTypeChart(lastTotalByType); });
+$('cfg-shownp').addEventListener('change',     e => applyNpVisibility(e.target.checked));
+$('cfg-showbubble').addEventListener('change', e => applyBubbleVisibility(e.target.checked));
+
+$('btn-save').addEventListener('click', () => {
+  saveCfg({
+    usersUrl: $('cfg-users').value.trim(),
+    trxUrl:   $('cfg-trx').value.trim(),
+    concilUrl: $('cfg-concil').value.trim(),
+    statusReportUrl: $('cfg-status-report').value.trim(),
+    circles:  parseCircles($('cfg-circles').value),
+    hName:    $('cfg-hname').value.trim() || 'Authorization',
+    token:    $('cfg-token').value.trim(),
+    dark:       $('cfg-dark').checked,
+    showNp:     $('cfg-shownp').checked,
+    showBubble: $('cfg-showbubble').checked,
+  });
+  setTheme(cfg.dark);
+  applyNpVisibility(cfg.showNp);
+  applyBubbleVisibility(cfg.showBubble);
+  layoutCircles();
+  users.forEach(u => setUserCircle(u, findCircleForActs(u.acts)));
+  updateCircleSizes();
+  closeModal();
+  clearInterval(pollTimer);
+  fetchAll();
+  pollTimer = setInterval(fetchAll, POLL_MS);
+});
+
+$('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear all settings and reset the lobby?')) return;
+  localStorage.removeItem(CFG_KEY);
+  cfg = DEF();
+
+  // Fade out all characters
+  [...users.keys()].forEach(removeUser);
+
+  // Reset stats
+  ['s-users','s-done','s-cncl','s-pend'].forEach(id => $(id).textContent = '0');
+  ['b-done','b-cncl','b-pend'].forEach(id => $(id).style.width = '0%');
+  $('s-out').textContent = '↑ 0';
+  $('s-in').textContent  = '↓ 0';
+  lastTotalByType = {};
+  drawTypeChart({});
+  lastConcilData = null;
+  drawConcilSquares(null);
+  $('upd').textContent = '—';
+  layoutCircles();
+
+  setTheme(true);
+  applyNpVisibility(true);
+  applyBubbleVisibility(true);
+  $('cfg-dark').checked        = true;
+  $('cfg-shownp').checked      = true;
+  $('cfg-showbubble').checked  = true;
+  $('cfg-circles').value       = '';
+  syncEmptyState();
+});
+
+window.addEventListener('resize', layoutCircles);
+
+// ── Boot ───────────────────────────────────────────────────
+setTheme(cfg.dark !== false);
+applyNpVisibility(cfg.showNp !== false);
+applyBubbleVisibility(cfg.showBubble !== false);
+layoutCircles();
+syncEmptyState();
+
+// Title from URL hash: livelobby.github.io/#MyTitle → "MyTitle LOBBY"
+(function applyHashTitle() {
+  const hash = decodeURIComponent(window.location.hash.slice(1)).trim();
+  if (!hash) return;
+
+  // Sidebar title: safely inject hash as text
+  const titleEl = $('sb-title');
+  titleEl.textContent = '';
+  titleEl.append('★ ', hash, document.createElement('br'));
+  titleEl.append('LOBBY ★');
+
+  document.title = `${hash} Lobby`;
+})();
+
+// Auto-open settings if not yet configured
+if (!cfg.usersUrl) setTimeout(openModal, 500);
+
+// Start render loop
+requestAnimationFrame(ts => {
+  lastTs = ts; lastSpr = ts;
+  requestAnimationFrame(renderLoop);
+});
+
+// Initial data fetch + polling
+fetchAll();
+let pollTimer = setInterval(fetchAll, POLL_MS);
+</script>
+</body>
+</html>
